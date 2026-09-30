@@ -265,30 +265,38 @@ a { color: var(--hema); }
   const OUT_RATE = 24000;         // Gemini'den gelen ses: 24 kHz
   const CHUNK = 1024;             // 64 ms'lik parçalar
   const MAX_LEVEL = 6;            // kurulum sadeleştirme basamakları
-  const GATE_SEC = 1.6;           // bu kadar sesten sonra cevap dolgu sayılmaz
+  const GATE_SEC = 1.6;           // döküm kapalıyken: bu kadar sesten sonra cevap dolgu sayılmaz
+  const GATE_SEC_TX = 4.0;        // döküm açıkken: yazı gecikse bile bu kadar sesten sonra çalınır
 
-  const DEFAULT_PROMPT = `Sen bir TUS (Tıpta Uzmanlık Sınavı) adayının çalışma arkadaşısın. Aday sana sesli olarak konu anlatıyor. Sen karşısında oturan, dikkatle dinleyen, tıp bilgisi güçlü bir arkadaşsın.
+  const DEFAULT_PROMPT = `Sen bir TUS (Tıpta Uzmanlık Sınavı) adayının çalışma arkadaşısın. Aday sana sesli olarak konu anlatıyor; sen dikkatle dinleyen, tıp bilgisi güçlü bir arkadaşsın.
 
-En önemli kural: Adayın sözünü kesme ve gereksiz yere konuşma. Aday düşünmek için duraksayabilir; bu senin konuşma sıran geldiği anlamına gelmez.
-
-Söyleyecek kritik bir şey yoksa tamamen sessiz kal. "Hı hı", "evet", "tamam", "anladım", "doğru", "devam et" gibi dinleyici sesleri ya da dolgu sözler kesinlikle söyleme.
-
-Yalnızca şu durumlarda konuş:
-1. Tıbben yanlış bir bilgi söylediğinde (yanlış hormon, yanlış hücre, ters etki, yanlış sayı gibi).
+Gerçekten konuşman gereken yalnızca üç durum var:
+1. Aday tıbben yanlış bir bilgi söylediğinde (yanlış hormon, yanlış hücre, ters etki, yanlış sayı gibi).
 2. TUS'ta sık sorulan kritik bir noktayı atlayıp başka konuya geçtiğinde.
-3. Sana doğrudan bir soru sorduğunda.
-Bu durumlarda en fazla iki kısa cümle söyle ve sus. Sözünü "devam et" gibi bir ifadeyle bitirme. Doğru anlatılanı tekrar etme, özet yapma, övme, soru sorma.
+3. Aday sana doğrudan bir soru sorduğunda.
+Bu durumlarda en fazla iki kısa cümleyle söyle. Sözünü "devam et" gibi bir ifadeyle bitirme. Doğru anlatılanı tekrar etme, özet yapma, övme, soru sorma.
+
+Bu üç durumun dışında her seferinde yalnızca tek bir kelime söyle: "Tamam". Başka hiçbir kelime, açıklama, sembol ya da not ekleme. "Sessizlik", "silence", "<!-- -->", parantez içi açıklamalar gibi şeyler kesinlikle üretme. Bu tek kelime adaya hiç duyurulmuyor; sadece söyleyecek bir şeyin olmadığını gösteriyor.
 
 Aday "bitti" dediğinde ya da senden eksikleri istediğinde, anlatımda atlanan en önemli noktaları en fazla beş kısa madde olarak söyle.
 
-Aday "sus" ya da "sessiz ol" derse hemen sessiz dinlemeye dön.
-
-Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin. Kısa ve net ol.`;
+Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
   const CHECK_TEXT = "Şu ana kadar anlattıklarımda kritik bir yanlış ya da TUS için önemli bir eksik var mı? Varsa en fazla iki kısa cümleyle söyle, yoksa sadece \"eksik yok\" de.";
   const DONE_TEXT = "Anlatımım bitti. Atladığım en önemli noktaları en fazla beş kısa madde olarak söyle.";
-  const TRIVIAL_WORDS = new Set(["hı", "hıhı", "hı-hı", "hıı", "hi", "hihi", "hı-ı", "mhm", "hmm", "hm", "evet", "tamam", "devam", "et", "edebilirsin", "ediyorum", "anladım", "peki", "okey", "ok", "dinliyorum", "güzel", "olur", "iyi", "doğru", "aynen", "harika", "süper", "çok", "gayet", "gidiyorsun", "gidiyorsunuz", "bravo", "tebrikler", "sorun", "yok", "eksik", "edin", "edebilirsiniz"]);
+  const TRIVIAL_WORDS = new Set(["hı", "hıhı", "hı-hı", "hıı", "hi", "hihi", "hı-ı", "mhm", "hmm", "hm", "evet", "tamam", "tamamdır", "devam", "et", "edebilirsin", "edebilirsiniz", "ediyorum", "anladım", "peki", "okey", "ok", "okay", "dinliyorum", "güzel", "olur", "iyi", "doğru", "aynen", "harika", "süper", "çok", "gayet", "gidiyorsun", "gidiyorsunuz", "bravo", "tebrikler", "sorun", "yok", "eksik", "edin",
+    "sessizlik", "sessiz", "kalıyorum", "susuyorum", "bekliyorum", "dinlemedeyim", "dinlemeye", "silence", "silent", "pause", "listening", "quiet", "none", "nothing", "no", "response"]);
+  // Söyleyecek bir şey yoksa modelin ürettiği işaretleri ve dolgu sözleri tanır; bunlar hiç çalınmaz.
+  // Yarım gelmiş parçaları da (ör. "<!-- Sil") tanır, çünkü karar parça parça gelen döküme göre veriliyor.
+  function stripMarks(text) {
+    return text
+      .replace(/<!--[\s\S]*?(-->|$)/g, " ")
+      .replace(/\([^)]*(\)|$)/g, " ")
+      .replace(/\[[^\]]*(\]|$)/g, " ")
+      .replace(/\*[^*]*(\*|$)/g, " ")
+      .replace(/<[^>]*(>|$)/g, " ");
+  }
   function isTrivial(text) {
-    const words = text.toLocaleLowerCase("tr").replace(/[^\p{L}\s-]/gu, " ").split(/\s+/).filter(Boolean);
+    const words = stripMarks(text).toLocaleLowerCase("tr").replace(/[^\p{L}\s-]/gu, " ").split(/\s+/).filter(Boolean);
     if (!words.length) return true;
     if (words.length > 5) return false;
     return words.every(w => TRIVIAL_WORDS.has(w) || /^h[ıi]+(-?h?[ıi]+)*m*$/.test(w) || /^m+h*m+$/.test(w));
@@ -321,9 +329,9 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin. Kısa 
     voice: store.get("voice", "Kore"),
     model: store.get("model", "gemini-3.8-live"),
     topic: store.get("topic", ""),
-    customPrompt: store.get("prompt2", "")
+    customPrompt: store.get("prompt3", "")
   };
-  store.del("prompt"); store.del("style"); // eski sürümün talimat ve tarz kayıtları
+  store.del("prompt"); store.del("prompt2"); store.del("style"); // eski sürümün talimat ve tarz kayıtları
 
   function renderSettings() {
     els.apiKey.value = cfg.key;
@@ -358,11 +366,11 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin. Kısa 
   els.topic.onchange = () => { cfg.topic = els.topic.value.trim(); store.set("topic", cfg.topic); };
   els.prompt.onchange = () => {
     const v = els.prompt.value.trim();
-    if (!v || v === DEFAULT_PROMPT.trim()) { cfg.customPrompt = ""; store.del("prompt2"); }
-    else { cfg.customPrompt = v; store.set("prompt2", v); }
+    if (!v || v === DEFAULT_PROMPT.trim()) { cfg.customPrompt = ""; store.del("prompt3"); }
+    else { cfg.customPrompt = v; store.set("prompt3", v); }
     renderSettings();
   };
-  $("resetPrompt").onclick = () => { cfg.customPrompt = ""; store.del("prompt2"); renderSettings(); };
+  $("resetPrompt").onclick = () => { cfg.customPrompt = ""; store.del("prompt3"); renderSettings(); };
 
   function instruction() {
     const base = cfg.customPrompt || DEFAULT_PROMPT;
@@ -713,7 +721,8 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin. Kısa 
   function weigh(t) {
     if (t.decided) return;
     const txt = t.text.trim();
-    if (t.asked || (txt && !isTrivial(txt)) || t.sec > GATE_SEC) decide(t, true);
+    const gate = session.level >= 4 ? GATE_SEC : GATE_SEC_TX;
+    if (t.asked || (txt && !isTrivial(txt)) || t.sec > gate) decide(t, true);
   }
   function decide(t, play) {
     if (t.decided) return;
@@ -734,7 +743,11 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin. Kısa 
     t.done = true;
     // Döküm parçaları sesten biraz sonra gelebilir: karar ve not için kısa süre bekle.
     t.timer = setTimeout(() => {
-      if (!t.decided) { const txt = t.text.trim(); decide(t, !!txt && !isTrivial(txt)); }
+      if (!t.decided) {
+        const txt = t.text.trim();
+        // Yazısı hiç gelmeyen uzun bir cevap gerçek bir uyarı olabilir; kısa ve yazısızsa dolgudur.
+        decide(t, txt ? !isTrivial(txt) : t.sec > (session.level >= 4 ? GATE_SEC : 2.5));
+      }
       finalizeTurn(t, false);
     }, 700);
   }
@@ -750,7 +763,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin. Kısa 
       const text = t.entry.text.trim();
       if (!text && !interrupted && t.playedSec > 1.5 && session.level >= 4) addNote("(Sesli bir uyarı yaptı; bu modelde yazıya dökülemedi.)");
       else if (text && !isTrivial(text)) {
-        const clean = text.replace(/\s+/g, " ").replace(/[\s,.;:!]*\b(devam et(ebilirsin)?|devam edebilirsin|devam)\s*[.!…]*\s*$/i, "").trim();
+        const clean = stripMarks(text).replace(/\s+/g, " ").replace(/[\s,.;:!]*\b(devam et(ebilirsin)?|devam edebilirsin|devam)\s*[.!…]*\s*$/i, "").trim();
         addNote((clean || text) + (interrupted ? " …" : (/[.!?…]$/.test(clean) ? "" : ".")));
       }
       if (!text) { t.entry.el.remove(); log.splice(log.indexOf(t.entry), 1); }
