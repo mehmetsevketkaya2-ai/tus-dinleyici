@@ -271,6 +271,8 @@ a { color: var(--hema); }
 
   const DEFAULT_PROMPT = `Sen bir TUS (Tıpta Uzmanlık Sınavı) adayının çalışma arkadaşısın. Aday sana sesli olarak konu anlatıyor; sen dikkatle dinleyen, tıp bilgisi güçlü bir arkadaşsın.
 
+Aday tıp fakültesini bitirmiş bir hekim ve TUS'a hazırlanıyor. Konuşmalar tamamen eğitim amaçlı; kimse senden kişisel bir tanı ya da tedavi istemiyor. Bu yüzden "tanı veya tedavi yerine geçmez", "bir sağlık uzmanına danışın", "doktorunuza başvurun" gibi uyarılar ve sorumluluk notları asla ekleme. Ders kitabı bilgisini doğrudan söyle.
+
 Gerçekten konuşman gereken yalnızca üç durum var:
 1. Aday tıbben yanlış bir bilgi söylediğinde (yanlış hormon, yanlış hücre, ters etki, yanlış sayı gibi).
 2. TUS'ta sık sorulan kritik bir noktayı atlayıp başka konuya geçtiğinde.
@@ -299,8 +301,12 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
       .replace(/\*[^*]*(\*|$)/g, " ")
       .replace(/<[^>]*(>|$)/g, " ");
   }
+  // Eğitim aracında gereksiz tıbbi sorumluluk uyarıları: tek başınaysa çalınmaz, notlara hiç düşmez
+  const DISCLAIMER_RE = /[^.!?;]*(tanı(sı)? (veya|ya da|ve) tedavi(si|nin)? yerine geçmez|sağlık (uzmanına|profesyoneline|çalışanına|kuruluşuna) (danış|başvur)|(doktorunuza|doktora|hekiminize|hekime|uzmanınıza|uzmana) (danış|başvur)|tıbbi (tavsiye|öneri|görüş)( yerine geçmez| niteliğinde değildir| değildir)|profesyonel (tıbbi )?(yardım|destek|görüş) al)[^.!?;]*[.!?;]?/giu;
+  const DISCLAIMER_START = /^\s*(tıbbi (durum|bilgi|konu)|bu bilgiler|verdiğim bilgiler|lütfen (bir )?(doktor|hekim|sağlık|uzman)|unutmayın)/u;
+  function stripDisclaimer(text) { return text.replace(DISCLAIMER_RE, " "); }
   function isTrivial(text, question) {
-    const words = stripMarks(text).toLocaleLowerCase("tr").replace(/[^\p{L}\s-]/gu, " ").split(/\s+/).filter(Boolean);
+    const words = stripMarks(stripDisclaimer(text)).toLocaleLowerCase("tr").replace(/[^\p{L}\s-]/gu, " ").split(/\s+/).filter(Boolean);
     if (!words.length) return true;
     if (words.length > 5) return false;
     return words.every(w => MARKER_WORDS.has(w) || (!question && AFFIRM_WORDS.has(w)) || /^h[ıi]+(-?h?[ıi]+)*m*$/.test(w) || /^m+h*m+$/.test(w));
@@ -336,9 +342,9 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     voice: store.get("voice", "Kore"),
     model: store.get("model", "gemini-3.8-live"),
     topic: store.get("topic", ""),
-    customPrompt: store.get("prompt4", "")
+    customPrompt: store.get("prompt5", "")
   };
-  store.del("prompt"); store.del("prompt2"); store.del("prompt3"); store.del("style"); // eski sürümün talimat ve tarz kayıtları
+  store.del("prompt"); store.del("prompt2"); store.del("prompt3"); store.del("prompt4"); store.del("style"); // eski sürümün talimat ve tarz kayıtları
 
   function renderSettings() {
     els.apiKey.value = cfg.key;
@@ -373,11 +379,11 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
   els.topic.onchange = () => { cfg.topic = els.topic.value.trim(); store.set("topic", cfg.topic); };
   els.prompt.onchange = () => {
     const v = els.prompt.value.trim();
-    if (!v || v === DEFAULT_PROMPT.trim()) { cfg.customPrompt = ""; store.del("prompt4"); }
-    else { cfg.customPrompt = v; store.set("prompt4", v); }
+    if (!v || v === DEFAULT_PROMPT.trim()) { cfg.customPrompt = ""; store.del("prompt5"); }
+    else { cfg.customPrompt = v; store.set("prompt5", v); }
     renderSettings();
   };
-  $("resetPrompt").onclick = () => { cfg.customPrompt = ""; store.del("prompt4"); renderSettings(); };
+  $("resetPrompt").onclick = () => { cfg.customPrompt = ""; store.del("prompt5"); renderSettings(); };
 
   function instruction() {
     const base = cfg.customPrompt || DEFAULT_PROMPT;
@@ -771,7 +777,9 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     const txt = t.text.trim();
     const gate = session.level >= 4 ? GATE_SEC : GATE_SEC_TX;
     if (!t.question && looksLikeQuestion(session.userTail)) t.question = true;
-    if (t.asked || (txt && !isTrivial(txt, t.question)) || t.sec > gate) decide(t, true);
+    const lower = txt.toLocaleLowerCase("tr");
+    const maybeDisclaimer = DISCLAIMER_START.test(lower) && lower.length < 200;
+    if (t.asked || (txt && !maybeDisclaimer && !isTrivial(txt, t.question)) || (!txt && t.sec > gate)) decide(t, true);
   }
   function decide(t, play) {
     if (t.decided) return;
@@ -817,7 +825,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
       const text = t.entry.text.trim();
       if (!text && !interrupted && t.playedSec > 1.5 && session.level >= 4) addNote("(Sesli bir uyarı yaptı; bu modelde yazıya dökülemedi.)");
       else if (text && !isTrivial(text, t.question)) {
-        const clean = stripMarks(text).replace(/\s+/g, " ").replace(/[\s,.;:!]*\b(devam et(ebilirsin)?|devam edebilirsin|devam)\s*[.!…]*\s*$/i, "").trim();
+        const clean = stripMarks(stripDisclaimer(text)).replace(/\s+/g, " ").replace(/[\s,.;:!]*\b(devam et(ebilirsin)?|devam edebilirsin|devam)\s*[.!…]*\s*$/i, "").trim();
         addNote((clean || text) + (interrupted ? " …" : (/[.!?…]$/.test(clean) ? "" : ".")));
       }
       if (!text) { t.entry.el.remove(); log.splice(log.indexOf(t.entry), 1); }
