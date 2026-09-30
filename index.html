@@ -85,10 +85,6 @@ main { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap:
 .state strong { font: 600 1.2rem/1.3 var(--display); }
 .state span { color: var(--muted); font-size: 0.93rem; }
 
-.silence { width: min(320px, 100%); display: grid; gap: 6px; }
-.silence .bar { height: 6px; border-radius: 3px; background: var(--hema-soft); overflow: hidden; }
-.silence .bar i { display: block; height: 100%; width: 0%; background: var(--hema); border-radius: 3px; }
-.silence .lbl { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
 
 .controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
 button { font: 600 0.95rem var(--body); border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--ink); padding: 10px 18px; cursor: pointer; }
@@ -136,10 +132,6 @@ details.settings[open] > summary::before { content: "–"; }
 .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; margin-top: 18px; }
 .field { display: grid; gap: 6px; align-content: start; min-width: 0; }
 .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.seg { display: grid; gap: 6px; }
-.seg button { border-radius: 10px; padding: 9px 12px; font-weight: 500; text-align: left; display: grid; gap: 2px; }
-.seg button small { font-weight: 400; font-size: 0.8rem; color: var(--muted); }
-.seg button[aria-pressed="true"] { border-color: var(--hema); background: var(--hema-soft); box-shadow: inset 3px 0 0 var(--hema); }
 input[type="range"] { width: 100%; accent-color: var(--hema); }
 .val { font: 500 0.95rem var(--mono); font-variant-numeric: tabular-nums; }
 .keybox { border: 1px dashed var(--hema); border-radius: 12px; padding: 16px; display: grid; gap: 10px; background: var(--hema-soft); }
@@ -162,10 +154,6 @@ a { color: var(--hema); }
       <div class="state" aria-live="polite">
         <strong id="stateTitle">Hazır</strong>
         <span id="stateSub">Başlamak için düğmeye basın, sonra anlatmaya başlayın.</span>
-      </div>
-      <div class="silence" id="silenceBox" hidden>
-        <div class="bar"><i id="silenceBar"></i></div>
-        <div class="lbl"><span>Sessizlik</span><span id="silenceVal">0,0 / 4,0 sn</span></div>
       </div>
       <div id="alert" class="alert" role="alert" hidden></div>
       <div class="controls">
@@ -229,11 +217,6 @@ a { color: var(--hema); }
           <input type="range" id="silence" min="0.5" max="10" step="0.5" value="4">
           <div class="row"><span class="val" id="silenceOut">4,0 sn</span><span class="hint">Bu kadar süre susmadan söz almaz. Kısa tutarsanız daha çabuk cevap verir ama düşünmek için durduğunuzda araya girebilir; sık bölünüyorsanız artırın.</span></div>
 
-          <label style="margin-top:10px">Dinleyici tarzı</label>
-          <div class="seg" role="group" aria-label="Dinleyici tarzı">
-            <button type="button" data-style="quiet" aria-pressed="true">Sadece gerekince konuşur<small>Eksik ya da yanlış yoksa sessiz kalır.</small></button>
-            <button type="button" data-style="nod" aria-pressed="false">Ara ara "hı hı" der<small>Duraksadıkça kısa bir onay verir.</small></button>
-          </div>
         </div>
 
         <div class="field">
@@ -282,47 +265,28 @@ a { color: var(--hema); }
   const OUT_RATE = 24000;         // Gemini'den gelen ses: 24 kHz
   const CHUNK = 1024;             // 64 ms'lik parçalar
   const MAX_LEVEL = 6;            // kurulum sadeleştirme basamakları
-  const SPEECH_RMS = 0.012;       // yerel sessizlik göstergesi eşiği
+  const GATE_SEC = 1.6;           // bu kadar sesten sonra cevap dolgu sayılmaz
 
-  const PROMPTS = {
-    quiet: `Sen bir TUS (Tıpta Uzmanlık Sınavı) adayının çalışma arkadaşısın. Aday sana sesli olarak konu anlatıyor. Sen karşısında oturan, dikkatle dinleyen, tıp bilgisi güçlü bir arkadaşsın.
+  const DEFAULT_PROMPT = `Sen bir TUS (Tıpta Uzmanlık Sınavı) adayının çalışma arkadaşısın. Aday sana sesli olarak konu anlatıyor. Sen karşısında oturan, dikkatle dinleyen, tıp bilgisi güçlü bir arkadaşsın.
 
 En önemli kural: Adayın sözünü kesme ve gereksiz yere konuşma. Aday düşünmek için duraksayabilir; bu senin konuşma sıran geldiği anlamına gelmez.
 
-Aday anlatmaya devam ediyorsa, cümlesi yarım kaldıysa, bir şeyi hatırlamaya çalışıyorsa ya da anlattıkları doğruysa hiçbir şey söyleme. Mutlaka ses çıkarman gerekiyorsa yalnızca "hı hı" de.
+Söyleyecek kritik bir şey yoksa tamamen sessiz kal. "Hı hı", "evet", "tamam", "anladım", "doğru", "devam et" gibi dinleyici sesleri ya da dolgu sözler kesinlikle söyleme.
 
 Yalnızca şu durumlarda konuş:
 1. Tıbben yanlış bir bilgi söylediğinde (yanlış hormon, yanlış hücre, ters etki, yanlış sayı gibi).
 2. TUS'ta sık sorulan kritik bir noktayı atlayıp başka konuya geçtiğinde.
 3. Sana doğrudan bir soru sorduğunda.
-Bu durumlarda en fazla iki kısa cümle söyle, ardından "devam et" de ve sus. Doğru anlatılanı tekrar etme, özet yapma, övme, soru sorma.
+Bu durumlarda en fazla iki kısa cümle söyle ve sus. Sözünü "devam et" gibi bir ifadeyle bitirme. Doğru anlatılanı tekrar etme, özet yapma, övme, soru sorma.
 
 Aday "bitti" dediğinde ya da senden eksikleri istediğinde, anlatımda atlanan en önemli noktaları en fazla beş kısa madde olarak söyle.
 
 Aday "sus" ya da "sessiz ol" derse hemen sessiz dinlemeye dön.
 
-Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin. Kısa ve net ol.`,
-    nod: `Sen bir TUS (Tıpta Uzmanlık Sınavı) adayının çalışma arkadaşısın. Aday sana sesli olarak konu anlatıyor. Sen karşısında oturan, dikkatle dinleyen, tıp bilgisi güçlü bir arkadaşsın.
-
-En önemli kural: Adayın sözünü kesme ve gereksiz yere konuşma. Aday düşünmek için duraksayabilir.
-
-Aday duraksadığında, kritik bir şey yoksa yalnızca tek kelimelik bir dinleyici tepkisi ver: "hı hı", "evet", "tamam" ya da "devam". Başka bir şey söyleme.
-
-Yalnızca şu durumlarda daha fazla konuş:
-1. Tıbben yanlış bir bilgi söylediğinde (yanlış hormon, yanlış hücre, ters etki, yanlış sayı gibi).
-2. TUS'ta sık sorulan kritik bir noktayı atlayıp başka konuya geçtiğinde.
-3. Sana doğrudan bir soru sorduğunda.
-Bu durumlarda en fazla iki kısa cümle söyle, ardından "devam et" de ve sus. Doğru anlatılanı tekrar etme, özet yapma, övme, soru sorma.
-
-Aday "bitti" dediğinde ya da senden eksikleri istediğinde, anlatımda atlanan en önemli noktaları en fazla beş kısa madde olarak söyle.
-
-Aday "sus" ya da "sessiz ol" derse hemen sessiz dinlemeye dön.
-
-Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin. Kısa ve net ol.`
-  };
-  const CHECK_TEXT = "Şu ana kadar anlattıklarımda kritik bir yanlış ya da TUS için önemli bir eksik var mı? Varsa en fazla iki kısa cümleyle söyle, yoksa sadece \"devam\" de.";
+Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin. Kısa ve net ol.`;
+  const CHECK_TEXT = "Şu ana kadar anlattıklarımda kritik bir yanlış ya da TUS için önemli bir eksik var mı? Varsa en fazla iki kısa cümleyle söyle, yoksa sadece \"eksik yok\" de.";
   const DONE_TEXT = "Anlatımım bitti. Atladığım en önemli noktaları en fazla beş kısa madde olarak söyle.";
-  const TRIVIAL_WORDS = new Set(["hı", "hıhı", "hı-hı", "hıı", "hi", "hihi", "hı-ı", "mhm", "hmm", "hm", "evet", "tamam", "devam", "et", "edebilirsin", "ediyorum", "anladım", "peki", "okey", "ok", "dinliyorum", "güzel", "olur", "iyi"]);
+  const TRIVIAL_WORDS = new Set(["hı", "hıhı", "hı-hı", "hıı", "hi", "hihi", "hı-ı", "mhm", "hmm", "hm", "evet", "tamam", "devam", "et", "edebilirsin", "ediyorum", "anladım", "peki", "okey", "ok", "dinliyorum", "güzel", "olur", "iyi", "doğru", "aynen", "harika", "süper", "çok", "gayet", "gidiyorsun", "gidiyorsunuz", "bravo", "tebrikler", "sorun", "yok", "eksik", "edin", "edebilirsiniz"]);
   function isTrivial(text) {
     const words = text.toLocaleLowerCase("tr").replace(/[^\p{L}\s-]/gu, " ").split(/\s+/).filter(Boolean);
     if (!words.length) return true;
@@ -347,20 +311,19 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin. Kısa 
     orb: $("orb"), title: $("stateTitle"), sub: $("stateSub"), alert: $("alert"),
     start: $("startBtn"), pause: $("pauseBtn"), check: $("checkBtn"), done: $("doneBtn"),
     topic: $("topic"), notes: $("notes"), notesEmpty: $("notesEmpty"), transcript: $("transcript"), liveLine: $("liveLine"),
-    silenceBox: $("silenceBox"), silenceBar: $("silenceBar"), silenceVal: $("silenceVal"), clock: $("clock"),
+    clock: $("clock"),
     apiKey: $("apiKey"), keyStatus: $("keyStatus"), settings: $("settings"), silence: $("silence"), silenceOut: $("silenceOut"),
     voice: $("voice"), model: $("model"), prompt: $("prompt"), promptStatus: $("promptStatus")
   };
   const cfg = {
     key: store.get("key", ""),
     silence: parseFloat(store.get("silence", "4")) || 4,
-    style: store.get("style", "quiet"),
     voice: store.get("voice", "Kore"),
     model: store.get("model", "gemini-3.8-live"),
     topic: store.get("topic", ""),
-    customPrompt: store.get("prompt", "")
+    customPrompt: store.get("prompt2", "")
   };
-  if (!PROMPTS[cfg.style]) cfg.style = "quiet";
+  store.del("prompt"); store.del("style"); // eski sürümün talimat ve tarz kayıtları
 
   function renderSettings() {
     els.apiKey.value = cfg.key;
@@ -373,8 +336,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin. Kısa 
     els.model.value = cfg.model;
     if (els.model.value !== cfg.model) els.model.value = "gemini-3.8-live";
     els.topic.value = cfg.topic;
-    document.querySelectorAll(".seg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.style === cfg.style)));
-    els.prompt.value = cfg.customPrompt || PROMPTS[cfg.style];
+    els.prompt.value = cfg.customPrompt || DEFAULT_PROMPT;
     els.promptStatus.textContent = cfg.customPrompt ? "Düzenlenmiş talimat kullanılıyor." : "";
     $("keyHelp").hidden = !!cfg.key;
   }
@@ -394,21 +356,16 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin. Kısa 
   els.voice.onchange = () => { cfg.voice = els.voice.value; store.set("voice", cfg.voice); };
   els.model.onchange = () => { cfg.model = els.model.value; store.set("model", cfg.model); };
   els.topic.onchange = () => { cfg.topic = els.topic.value.trim(); store.set("topic", cfg.topic); };
-  document.querySelectorAll(".seg button").forEach(b => b.onclick = () => {
-    cfg.style = b.dataset.style; store.set("style", cfg.style);
-    if (!cfg.customPrompt) els.prompt.value = PROMPTS[cfg.style];
-    renderSettings();
-  });
   els.prompt.onchange = () => {
     const v = els.prompt.value.trim();
-    if (!v || v === PROMPTS[cfg.style].trim()) { cfg.customPrompt = ""; store.del("prompt"); }
-    else { cfg.customPrompt = v; store.set("prompt", v); }
+    if (!v || v === DEFAULT_PROMPT.trim()) { cfg.customPrompt = ""; store.del("prompt2"); }
+    else { cfg.customPrompt = v; store.set("prompt2", v); }
     renderSettings();
   };
-  $("resetPrompt").onclick = () => { cfg.customPrompt = ""; store.del("prompt"); renderSettings(); };
+  $("resetPrompt").onclick = () => { cfg.customPrompt = ""; store.del("prompt2"); renderSettings(); };
 
   function instruction() {
-    const base = cfg.customPrompt || PROMPTS[cfg.style];
+    const base = cfg.customPrompt || DEFAULT_PROMPT;
     const topic = els.topic.value.trim();
     return topic ? base + "\n\nBugünkü konu: " + topic + "." : base;
   }
@@ -426,7 +383,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin. Kısa 
   // ---------- Notlar ve döküm ----------
   const notes = [];
   const log = [];
-  let curMe = null, curPal = null;
+  let curMe = null;
   function elapsed() { return session.startedAt ? fmtClock(Date.now() - session.startedAt) : "00:00"; }
   function renderNotes() {
     els.notes.innerHTML = "";
@@ -564,7 +521,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin. Kısa 
     audio.nextT = t + buf.duration;
     audio.playing.add(s);
     s.onended = () => audio.playing.delete(s);
-    session.palAudioSec += buf.duration;
+    audio.played = (audio.played || 0) + 1;
   }
   function stopPlayback() {
     audio.playing.forEach(s => { try { s.stop(); } catch {} });
@@ -576,7 +533,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin. Kısa 
   // ---------- Oturum ----------
   const session = {
     running: false, paused: false, ws: null, ready: false, handle: null, level: 0,
-    startedAt: 0, reconnecting: false, attempts: 0, goAway: false, buffer: [], palAudioSec: 0,
+    startedAt: 0, reconnecting: false, attempts: 0, goAway: false, buffer: [],
     textVia: "realtime", lastTextSent: null
   };
 
@@ -600,7 +557,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin. Kısa 
       s.contextWindowCompression = { slidingWindow: {} };
     }
     if (level <= 4) s.sessionResumption = session.handle ? { handle: session.handle } : {};
-    if (level === 0 && cfg.style === "quiet") s.proactivity = { proactiveAudio: true };
+    if (level === 0) s.proactivity = { proactiveAudio: true };
     return { setup: s };
   }
 
@@ -698,6 +655,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin. Kısa 
     if (session.textVia === "client") rawSend(session.ws, { clientContent: { turns: [{ role: "user", parts: [{ text }] }], turnComplete: true } });
     else rawSend(session.ws, { realtimeInput: { text } });
     session.lastTextSent = { text, at: Date.now() };
+    session.expectingAnswer = true;
     addLog("sys", text === DONE_TEXT ? "Anlatımın bittiği bildirildi." : "Eksik olup olmadığı soruldu.");
     session.thinkingSince = Date.now();
     setState("live", "Düşünüyor", "Birazdan cevap verecek.");
@@ -718,45 +676,88 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin. Kısa 
       if (!curMe) curMe = addLog("me", "");
       appendTo(curMe, sc.inputTranscription.text);
     }
-    if (sc.interrupted) {
-      stopPlayback();
-      finishPalTurn(true);
-      listeningState();
-    }
+    if (sc.interrupted) abortTurn(true);
     if (sc.modelTurn && Array.isArray(sc.modelTurn.parts)) {
       for (const p of sc.modelTurn.parts) {
-        if (p.inlineData && p.inlineData.data && /audio/.test(p.inlineData.mimeType || "audio/pcm")) {
-          if (!curPal) startPalTurn();
-          playChunk(p.inlineData.data, p.inlineData.mimeType);
-        }
+        if (p.inlineData && p.inlineData.data && /audio/.test(p.inlineData.mimeType || "audio/pcm")) palAudio(p.inlineData.data, p.inlineData.mimeType);
       }
     }
-    if (sc.outputTranscription && sc.outputTranscription.text) {
-      if (!curPal) startPalTurn();
-      appendTo(curPal, sc.outputTranscription.text);
-    }
-    if (sc.turnComplete) {
-      finishPalTurn(false);
-      if (!palSpeaking()) { session.uiSpeaking = false; session.thinkingSince = 0; listeningState(); }
-    }
+    if (sc.outputTranscription && sc.outputTranscription.text) palText(sc.outputTranscription.text);
+    if (sc.turnComplete) turnDone();
   }
-  function startPalTurn() {
-    curMe = null; els.liveLine.textContent = "";
-    curPal = addLog("pal", "");
-    session.palAudioSec = 0;
-    session.uiSpeaking = true; session.thinkingSince = 0;
-    setState("speaking live", "Konuşuyor", "Söze girerseniz hemen susar.");
+
+  // ---------- Dinleyicinin cevabı: önce bekletilir, dolgu sözse hiç çalınmaz ----------
+  // "hı hı", "devam et", "tamam" gibi cevaplar çalınmadan atılır. Gerçek bir uyarı
+  // ilk anlamlı kelimesi yazıya dökülünce (ya da 1,6 sn sesi birikince) çalınır.
+  // Kullanıcının düğmeyle sorduğu soruların cevabı beklemeden çalınır.
+  let turn = null;
+  function chunkSec(b64, mime) { const m = /rate=(\d+)/.exec(mime || ""); const rate = m ? parseInt(m[1], 10) : OUT_RATE; return (Math.floor(b64.length * 3 / 4) >> 1) / rate; }
+  function newTurn() {
+    if (turn) finalizeTurn(turn, false);
+    turn = { queue: [], sec: 0, playedSec: 0, text: "", decided: false, play: false, asked: !!session.expectingAnswer, done: false, entry: null, timer: 0 };
+    return turn;
   }
-  function finishPalTurn(interrupted) {
-    if (!curPal) { curMe = null; return; }
-    const text = curPal.text.trim();
-    if (!text && !interrupted && session.palAudioSec > 1.5 && session.level >= 4) addNote("(Sesli bir uyarı yaptı; bu modelde yazıya dökülemedi.)");
-    else if (text && !isTrivial(text)) {
-      const clean = text.replace(/\s+/g, " ").replace(/[\s,.;:!]*\b(devam et(ebilirsin)?|devam edebilirsin|devam)\s*[.!…]*\s*$/i, "").trim();
-      addNote((clean || text) + (interrupted ? " …" : (/[.!?…]$/.test(clean) ? "" : ".")));
+  function palAudio(b64, mime) {
+    const t = (turn && !turn.done) ? turn : newTurn();
+    const sec = chunkSec(b64, mime);
+    if (t.decided) { if (t.play) { playChunk(b64, mime); t.playedSec += sec; } return; }
+    t.queue.push([b64, mime]); t.sec += sec;
+    weigh(t);
+  }
+  function palText(frag) {
+    const t = turn || newTurn();
+    t.text += frag;
+    if (t.decided) { if (t.play && t.entry) appendTo(t.entry, frag); return; }
+    if (!t.done) weigh(t);
+  }
+  function weigh(t) {
+    if (t.decided) return;
+    const txt = t.text.trim();
+    if (t.asked || (txt && !isTrivial(txt)) || t.sec > GATE_SEC) decide(t, true);
+  }
+  function decide(t, play) {
+    if (t.decided) return;
+    t.decided = true; t.play = play;
+    if (play) {
+      curMe = null; els.liveLine.textContent = "";
+      t.entry = addLog("pal", t.text);
+      session.uiSpeaking = true; session.thinkingSince = 0;
+      setState("speaking live", "Konuşuyor", "Söze girerseniz hemen susar.");
+      t.queue.forEach(([b, m]) => { playChunk(b, m); t.playedSec += chunkSec(b, m); });
     }
-    if (!text) { curPal.el.remove(); log.splice(log.indexOf(curPal), 1); }
-    curPal = null; curMe = null;
+    t.queue = [];
+  }
+  function turnDone() {
+    session.expectingAnswer = false;
+    const t = turn;
+    if (!t) { if (!palSpeaking()) { session.thinkingSince = 0; listeningState(); } return; }
+    t.done = true;
+    // Döküm parçaları sesten biraz sonra gelebilir: karar ve not için kısa süre bekle.
+    t.timer = setTimeout(() => {
+      if (!t.decided) { const txt = t.text.trim(); decide(t, !!txt && !isTrivial(txt)); }
+      finalizeTurn(t, false);
+    }, 700);
+  }
+  function abortTurn(interrupted) {
+    stopPlayback();
+    if (turn) { if (!turn.decided) { turn.decided = true; turn.queue = []; } finalizeTurn(turn, interrupted); }
+    listeningState();
+  }
+  function finalizeTurn(t, interrupted) {
+    if (t.final) return;
+    t.final = true; clearTimeout(t.timer);
+    if (t.play && t.entry) {
+      const text = t.entry.text.trim();
+      if (!text && !interrupted && t.playedSec > 1.5 && session.level >= 4) addNote("(Sesli bir uyarı yaptı; bu modelde yazıya dökülemedi.)");
+      else if (text && !isTrivial(text)) {
+        const clean = text.replace(/\s+/g, " ").replace(/[\s,.;:!]*\b(devam et(ebilirsin)?|devam edebilirsin|devam)\s*[.!…]*\s*$/i, "").trim();
+        addNote((clean || text) + (interrupted ? " …" : (/[.!?…]$/.test(clean) ? "" : ".")));
+      }
+      if (!text) { t.entry.el.remove(); log.splice(log.indexOf(t.entry), 1); }
+    }
+    if (turn === t) turn = null;
+    curMe = null;
+    if (!palSpeaking()) { session.thinkingSince = 0; listeningState(); }
   }
   function listeningState() {
     if (!session.running) return;
@@ -791,7 +792,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin. Kısa 
     session.reconnecting = true; session.ready = false;
     const old = session.ws; session.ws = null;
     if (old) { try { old.onclose = null; old.close(1000); } catch {} }
-    stopPlayback(); finishPalTurn(true);
+    abortTurn(true);
     if (why !== "rollover") setState("live", "Yeniden bağlanıyor", "Anlatmaya devam edebilirsiniz; bu arada söyledikleriniz bekletiliyor.");
     session.contextLost = !session.handle;
     for (let i = 0; i < 6 && session.running; i++) {
@@ -818,23 +819,17 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin. Kısa 
     if (kind === "key" || kind === "model" || kind === "billing") els.settings.open = true;
   }
 
-  // ---------- Döngü: seviye göstergeleri ve sessizlik çubuğu ----------
+  // ---------- Döngü: seviye göstergeleri ----------
   const tmp = new Float32Array(1024);
-  let lastT = performance.now(), silentFor = 0;
   function rms(an) { if (!an) return 0; an.getFloatTimeDomainData(tmp); let s = 0; for (let i = 0; i < tmp.length; i++) s += tmp[i] * tmp[i]; return Math.sqrt(s / tmp.length); }
-  function frame(now) {
-    const dt = Math.min(0.25, (now - lastT) / 1000); lastT = now;
+  function frame() {
     if (session.running) {
       const mic = session.paused ? 0 : rms(audio.micAn);
       const out = rms(audio.outAn);
       els.orb.style.setProperty("--mic", Math.min(1, mic * 9).toFixed(3));
       els.orb.style.setProperty("--out", Math.min(1, out * 7).toFixed(3));
-      if (mic > SPEECH_RMS || session.paused || palSpeaking()) silentFor = 0; else silentFor += dt;
-      const frac = Math.min(1, silentFor / cfg.silence);
-      els.silenceBar.style.width = (frac * 100).toFixed(1) + "%";
-      els.silenceVal.textContent = fmtSec(Math.min(silentFor, cfg.silence)) + " / " + fmtSec(cfg.silence) + " sn";
       els.clock.textContent = fmtClock(Date.now() - session.startedAt);
-      if (session.uiSpeaking && !curPal && !palSpeaking()) { session.uiSpeaking = false; listeningState(); }
+      if (session.uiSpeaking && !(turn && turn.play && !turn.done) && !palSpeaking()) { session.uiSpeaking = false; listeningState(); }
       if (session.thinkingSince && Date.now() - session.thinkingSince > 15000) { session.thinkingSince = 0; listeningState(); }
     }
     requestAnimationFrame(frame);
@@ -866,7 +861,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin. Kısa 
         : "<b>Mikrofon açılamadı.</b> Bilgisayara bağlı bir mikrofon olduğundan emin olun." + (e && e.message ? "<br><span class=\"hint\">" + escapeHtml(e.message) + "</span>" : ""));
       return;
     }
-    Object.assign(session, { running: true, paused: false, ready: false, handle: null, level: levelFor(cfg.model), startedAt: Date.now(), reconnecting: false, buffer: [], textVia: "realtime", lastTextSent: null, retryText: null, levelNoted: false, uiSpeaking: false, thinkingSince: 0, contextLost: false });
+    Object.assign(session, { running: true, paused: false, ready: false, handle: null, level: levelFor(cfg.model), startedAt: Date.now(), reconnecting: false, buffer: [], textVia: "realtime", lastTextSent: null, retryText: null, levelNoted: false, uiSpeaking: false, thinkingSince: 0, contextLost: false, expectingAnswer: false });
     setState("live", "Bağlanıyor", "Birkaç saniye sürebilir.");
     session.reconnecting = true; // bağlanırken söylenenler bekletilsin
     try {
@@ -880,7 +875,6 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin. Kısa 
     }
     els.start.disabled = false; els.start.textContent = "Durdur"; els.start.classList.add("stop");
     els.pause.disabled = els.check.disabled = els.done.disabled = false;
-    els.silenceBox.hidden = false;
     addLog("sys", "Oturum başladı" + (els.topic.value.trim() ? ": " + els.topic.value.trim() : "") + ".");
     try { if (navigator.wakeLock) wakeLock = await navigator.wakeLock.request("screen"); } catch {}
   }
@@ -889,10 +883,10 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin. Kısa 
     session.running = false; session.ready = false; session.reconnecting = false; session.buffer = [];
     if (session.ws) { try { session.ws.onclose = null; session.ws.close(1000); } catch {} }
     session.ws = null;
-    stopPlayback(); finishPalTurn(false); stopMic();
+    abortTurn(false); stopMic();
     els.start.disabled = false; els.start.textContent = "Anlatmaya başla"; els.start.classList.remove("stop");
     els.pause.disabled = els.check.disabled = els.done.disabled = true; els.pause.textContent = "Duraklat";
-    els.silenceBox.hidden = true; els.liveLine.textContent = "";
+    els.liveLine.textContent = "";
     els.orb.style.setProperty("--mic", 0); els.orb.style.setProperty("--out", 0);
     if (!fromError) setState("idle", "Durdu", notes.length ? "Notlarınız sağda duruyor." : "Tekrar başlamak için düğmeye basın.");
     else setState("idle", "Durdu", "Sorunu giderip tekrar başlatabilirsiniz.");
