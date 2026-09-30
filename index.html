@@ -59,6 +59,27 @@ header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content:
 h1 { font: 600 1.75rem/1.2 var(--display); margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
 h1 small { display: block; font: 400 0.95rem/1.4 var(--body); color: var(--muted); letter-spacing: 0; margin-top: 2px; }
 .clock { font: 500 1.1rem var(--mono); font-variant-numeric: tabular-nums; color: var(--muted); }
+/* Günlük ücretsiz hak: saatin yanında küçük, soluk bir halka. Dokununca ayrıntı açılır. */
+.hdr-right { display: flex; align-items: center; gap: 12px; }
+details.meter { position: relative; }
+details.meter > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 6px; padding: 3px 8px 3px 4px; border-radius: 999px; font: 500 0.8rem var(--mono); font-variant-numeric: tabular-nums; color: var(--muted); }
+details.meter > summary::-webkit-details-marker { display: none; }
+details.meter > summary:hover { background: var(--hema-soft); }
+details.meter svg { width: 20px; height: 20px; transform: rotate(-90deg); flex: none; }
+details.meter circle { fill: none; stroke-width: 4.5; }
+details.meter .track { stroke: var(--line); }
+details.meter .val { stroke: color-mix(in srgb, var(--hema) 65%, var(--line)); stroke-linecap: round; transition: stroke-dasharray 500ms ease, stroke 300ms; }
+details.meter.init .val { transition: none; }   /* açılışta boştan dolma animasyonu olmasın */
+details.meter.low .val { stroke: var(--warn); }
+details.meter.out .val { stroke: var(--err); }
+details.meter.low > summary, details.meter.out > summary { color: var(--ink); }
+details.meter .pop { position: absolute; right: 0; top: calc(100% + 8px); z-index: 10; width: min(300px, calc(100vw - 32px)); display: grid; gap: 6px; padding: 14px 16px; text-align: left;
+  background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 14px 36px -14px rgb(20 16 40 / 0.35); font: 400 0.88rem/1.5 var(--body); }
+details.meter .pop b { font: 600 0.95rem var(--display); }
+details.meter .pop .big { font: 600 1.05rem var(--body); }
+details.meter .pop .hint { font-size: 0.8rem; }
+details.meter .pop button { justify-self: start; margin-top: 4px; }
+@media (max-width: 640px) { details.meter .pop { right: auto; left: 0; } }
 h2 { font: 600 1.15rem/1.3 var(--display); margin: 0; }
 .eyebrow { font: 600 0.72rem var(--body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
 
@@ -79,7 +100,7 @@ main { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap:
 .orb.idle .ring, .orb.paused .ring { border-color: var(--line); }
 .orb.live .core { animation: breathe 5.5s ease-in-out infinite; }
 @keyframes breathe { 0%, 100% { scale: 1; } 50% { scale: 1.045; } }
-@media (prefers-reduced-motion: reduce) { .orb.live .core { animation: none; } .orb .ring, .orb .core { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .orb.live .core { animation: none; } .orb .ring, .orb .core, details.meter .val { transition: none; } }
 
 .state { display: grid; gap: 4px; min-height: 3.2em; }
 .state strong { font: 600 1.2rem/1.3 var(--display); }
@@ -97,7 +118,7 @@ button.small { padding: 6px 12px; font-size: 0.85rem; }
 
 .topic { width: 100%; display: grid; gap: 6px; text-align: left; }
 label { font-size: 0.88rem; font-weight: 600; }
-input[type="text"], input[type="password"], select, textarea {
+input[type="text"], input[type="password"], input[type="number"], select, textarea {
   width: 100%; font: 400 0.95rem var(--body); color: var(--ink); background: var(--paper);
   border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
 }
@@ -133,6 +154,8 @@ details.settings[open] > summary::before { content: "–"; }
 .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; margin-top: 18px; }
 .field { display: grid; gap: 6px; align-content: start; min-width: 0; }
 .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.pair { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.pair select { width: auto; }
 input[type="range"] { width: 100%; accent-color: var(--hema); }
 .val { font: 500 0.95rem var(--mono); font-variant-numeric: tabular-nums; }
 .keybox { border: 1px dashed var(--hema); border-radius: 12px; padding: 16px; display: grid; gap: 10px; background: var(--hema-soft); }
@@ -146,7 +169,16 @@ a { color: var(--hema); }
 <div class="wrap">
   <header>
     <h1>TUS Dinleyici <small>Siz anlatın, o dinlesin. Yalnızca önemli bir eksik ya da yanlış olduğunda konuşur.</small></h1>
-    <div class="clock" id="clock" aria-label="Anlatım süresi">00:00</div>
+    <div class="hdr-right">
+      <details class="meter init" id="meter">
+        <summary id="meterSum" aria-label="Bugünkü ücretsiz hak">
+          <svg viewBox="0 0 36 36" aria-hidden="true"><circle class="track" cx="18" cy="18" r="14"/><circle class="val" id="meterVal" cx="18" cy="18" r="14" pathLength="100" stroke-dasharray="0 100"/></svg>
+          <span id="meterText">?</span>
+        </summary>
+        <div class="pop" id="meterPop"></div>
+      </details>
+      <div class="clock" id="clock" aria-label="Anlatım süresi">00:00</div>
+    </div>
   </header>
 
   <main>
@@ -239,6 +271,18 @@ a { color: var(--hema); }
             <option value="gemini-2.5-flash-native-audio-preview-12-2025">Gemini 2.5 Flash Native Audio (eski)</option>
           </select>
           <span class="hint">Ayar değişiklikleri bir sonraki başlatmada geçerli olur.</span>
+        </div>
+
+        <div class="field">
+          <label for="quotaLimit">Günlük ücretsiz hak</label>
+          <div class="pair">
+            <input type="number" id="quotaLimit" min="0" step="1" inputmode="numeric" placeholder="ör. 50">
+            <select id="quotaUnit" aria-label="Birim">
+              <option value="req">istek / gün</option>
+              <option value="tok">token / gün</option>
+            </select>
+          </div>
+          <span class="hint" id="quotaHint">AI Studio'da <a href="https://aistudio.google.com/rate-limit" target="_blank" rel="noopener">Rate limit</a> sayfasını açın, kullandığınız modelin günlük sınırını (RPD) buraya yazın. Saatin yanındaki halka ne kadar kaldığını gösterir; her gün <span id="quotaReset">10:00'da</span> yeniden dolar.</span>
         </div>
       </div>
 
@@ -336,6 +380,8 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     start: $("startBtn"), newBtn: $("newBtn"), pause: $("pauseBtn"), check: $("checkBtn"), done: $("doneBtn"),
     topic: $("topic"), notes: $("notes"), notesEmpty: $("notesEmpty"), transcript: $("transcript"), liveLine: $("liveLine"),
     clock: $("clock"),
+    meter: $("meter"), meterSum: $("meterSum"), meterVal: $("meterVal"), meterText: $("meterText"), meterPop: $("meterPop"),
+    quotaLimit: $("quotaLimit"), quotaUnit: $("quotaUnit"), quotaHint: $("quotaHint"),
     apiKey: $("apiKey"), keyStatus: $("keyStatus"), settings: $("settings"), silence: $("silence"), silenceOut: $("silenceOut"),
     voice: $("voice"), model: $("model"), prompt: $("prompt"), promptStatus: $("promptStatus")
   };
@@ -370,12 +416,12 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
   $("saveKey").onclick = () => {
     const v = els.apiKey.value.trim();
     if (!v) { els.keyStatus.textContent = "Önce anahtarı yapıştırın."; els.keyStatus.className = "hint"; return; }
-    cfg.key = v; store.set("key", v); renderSettings();
+    cfg.key = v; store.set("key", v); renderSettings(); renderQuotaSettings(); renderMeter();
     if (!/^(AQ\.|AIza)/.test(v)) { els.keyStatus.textContent = "Kaydedildi. Anahtarlar AQ. ya da AIza ile başlar; tam kopyaladığınızdan emin olun."; els.keyStatus.className = "hint"; }
     hideAlert();
   };
   $("showKey").onclick = (e) => { const shown = els.apiKey.type === "text"; els.apiKey.type = shown ? "password" : "text"; e.target.textContent = shown ? "Göster" : "Gizle"; };
-  $("forgetKey").onclick = () => { cfg.key = ""; store.del("key"); els.apiKey.value = ""; renderSettings(); };
+  $("forgetKey").onclick = () => { cfg.key = ""; store.del("key"); els.apiKey.value = ""; renderSettings(); renderQuotaSettings(); renderMeter(); };
   els.silence.oninput = () => { cfg.silence = parseFloat(els.silence.value); store.set("silence", String(cfg.silence)); els.silenceOut.textContent = fmtSec(cfg.silence) + " sn"; };
   els.voice.onchange = () => { cfg.voice = els.voice.value; store.set("voice", cfg.voice); };
   els.model.onchange = () => { cfg.model = els.model.value; store.set("model", cfg.model); };
@@ -393,6 +439,130 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     const topic = els.topic.value.trim();
     return topic ? base + "\n\nBugünkü konu: " + topic + "." : base;
   }
+
+  // ---------- Günlük ücretsiz hak ----------
+  // Google kalan hakkı sayfaya bildirmez. Sayfa, bu anahtarla bugün açtığı bağlantıları (her bağlantı bir istek)
+  // ve Google'ın her cevapta bildirdiği tokenları sayar; günlük sınırı kullanıcı AI Studio'dan bir kez girer.
+  // Google'ın günlük sınırları Pasifik saatiyle gece yarısı yenilenir (Türkiye'de yaz saatinde 10:00, kışın 11:00).
+  const QUOTA_TZ = "America/Los_Angeles";
+  const TOK_PER_SEC = 25;                                   // Google: 1 sn ses = 25 token
+  function tzParts(d) {
+    try {
+      const p = {};
+      new Intl.DateTimeFormat("en-US", { timeZone: QUOTA_TZ, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" })
+        .formatToParts(d).forEach(x => { p[x.type] = x.value; });
+      return p;
+    } catch {
+      const u = new Date(d.getTime() - 7 * 3600e3);
+      return { year: String(u.getUTCFullYear()), month: String(u.getUTCMonth() + 1).padStart(2, "0"), day: String(u.getUTCDate()).padStart(2, "0"), hour: String(u.getUTCHours()), minute: String(u.getUTCMinutes()), second: String(u.getUTCSeconds()) };
+    }
+  }
+  function quotaDay(d) { const p = tzParts(d || new Date()); return p.year + "-" + p.month + "-" + p.day; }
+  function resetClock() {
+    const d = new Date(), p = tzParts(d);
+    const into = (((+p.hour % 24) * 60 + +p.minute) * 60 + +p.second) * 1000 + d.getMilliseconds();
+    return new Date(d.getTime() - into + 864e5).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
+  }
+  // "10:00'da", "11:00'de", "08:30'da": saatin okunuşuna göre bulunma eki
+  function atTime(t) {
+    const [h, m] = t.split(":").map(Number);
+    const n = m || h;
+    const ones = ["da", "de", "de", "te", "te", "te", "da", "de", "de", "da"], tens = ["da", "da", "de", "da", "ta", "de"];
+    return t + "'" + (n === 0 ? "da" : n % 10 ? ones[n % 10] : tens[Math.floor(n / 10)]);
+  }
+  const quotaAll = (() => { try { const v = JSON.parse(store.get("quota", "{}")); return v && typeof v === "object" ? v : {}; } catch { return {}; } })();
+  function keyTag() { return (cfg.key || (WS_OVERRIDE ? "yerel-test" : "")).slice(-6); }   // her anahtarın sayacı ayrı
+  function saveQuota() { store.set("quota", JSON.stringify(quotaAll)); }
+  function quota() {
+    const tag = keyTag();
+    let q = quotaAll[tag];
+    if (!q || typeof q !== "object") q = quotaAll[tag] = { limit: 0, unit: "req", day: "", reqs: 0, tokIn: 0, tokOut: 0, out: false };
+    const today = quotaDay();
+    if (q.day !== today) { Object.assign(q, { day: today, reqs: 0, tokIn: 0, tokOut: 0, out: false }); saveQuota(); }
+    return q;
+  }
+  function countRequest() { quota().reqs++; saveQuota(); renderMeter(); }
+  function countTokens(tIn, tOut) { const q = quota(); q.tokIn += Math.round(tIn); q.tokOut += Math.round(tOut); saveQuota(); renderMeter(); }
+  function isDailyQuota(reason) { return /per ?day|daily|perday|\bRPD\b|günlük/i.test(reason || ""); }
+  function noteQuotaError(reason) {
+    // Yalnızca günlük sınır dolduysa halka boşalır; dakikalık sınır birkaç dakikada kendiliğinden açılır.
+    if (isDailyQuota(reason)) { quota().out = true; saveQuota(); renderMeter(); }
+  }
+
+  // Live'da Google her cevapta o ana kadarki bütün konuşmayı yeniden işler ve faturalar; bunun büyüklüğü
+  // usageMetadata içindeki promptTokensDetails toplamıdır (Google'ın forum açıklaması, Temmuz 2026).
+  // Aynı tur için birden fazla bildirim gelebildiğinden tur içinde en büyük değer alınır, tur bitince eklenir.
+  const turnUse = { ctx: 0, out: 0, outSec: 0, meta: false, closed: false, timer: 0 };
+  const ctxEst = { tok: 0 };   // bildirim göndermeyen modeller için kaba tahmin: oturumda biriken konuşma
+  function sumDetails(a) { return Array.isArray(a) ? a.reduce((s, x) => s + (+(x && x.tokenCount) || 0), 0) : 0; }
+  function noteUsage(u) {
+    if (!u || typeof u !== "object") return;
+    const ctx = Math.max(sumDetails(u.promptTokensDetails), +u.promptTokenCount || 0);
+    const out = Math.max(sumDetails(u.responseTokensDetails), +u.responseTokenCount || 0) + (+u.thoughtsTokenCount || 0);
+    turnUse.ctx = Math.max(turnUse.ctx, ctx); turnUse.out = Math.max(turnUse.out, out); turnUse.meta = true;
+  }
+  const usageLog = [];   // son turların dökümü (yalnızca yerel testte okunur)
+  function commitTurnUsage() {
+    clearTimeout(turnUse.timer); turnUse.timer = 0;
+    if (turnUse.meta || turnUse.outSec) {
+      const tIn = turnUse.meta ? turnUse.ctx : ctxEst.tok, tOut = Math.max(turnUse.out, turnUse.outSec * TOK_PER_SEC);
+      usageLog.push({ meta: turnUse.meta, in: Math.round(tIn), out: Math.round(tOut) }); if (usageLog.length > 50) usageLog.shift();
+      countTokens(tIn, tOut);
+    }
+    Object.assign(turnUse, { ctx: 0, out: 0, outSec: 0, meta: false, closed: false });
+  }
+  function turnUsageDone() {
+    // Bildirim bazen turun bitişinden hemen sonra gelir: kısa bir süre bekleyip öyle ekle
+    turnUse.closed = true;
+    clearTimeout(turnUse.timer);
+    turnUse.timer = setTimeout(commitTurnUsage, 2000);
+  }
+  function noteOutAudio(sec) {
+    if (turnUse.closed) commitTurnUsage();   // yeni bir tur başladı
+    turnUse.outSec += sec; ctxEst.tok += sec * TOK_PER_SEC;
+  }
+
+  function fmtNum(n) { return Math.round(n).toLocaleString("tr-TR"); }
+  function fmtTok(n) { return n >= 1e6 ? (n / 1e6).toFixed(1).replace(".", ",") + " milyon" : n >= 1e4 ? Math.round(n / 1000) + " bin" : fmtNum(n); }
+  function quotaUsed(q) { return q.unit === "tok" ? q.tokIn + q.tokOut : q.reqs; }
+  function renderMeter() {
+    const q = quota();
+    const left = q.out ? 0 : q.limit > 0 ? Math.max(0, 1 - quotaUsed(q) / q.limit) : null;
+    const pct = left === null ? null : Math.round(left * 100);
+    els.meterVal.setAttribute("stroke-dasharray", (pct ? Math.max(3, pct) : 0) + " 100");
+    els.meter.classList.toggle("low", pct !== null && pct <= 20 && pct > 5);
+    els.meter.classList.toggle("out", pct !== null && pct <= 5);
+    els.meterText.textContent = pct === null ? "?" : "%" + pct;
+    els.meterSum.setAttribute("aria-label", pct === null ? "Bugünkü ücretsiz hak: sınır girilmedi" : "Bugünkü ücretsiz hak: yüzde " + pct + " kaldı");
+    const pop = els.meterPop;
+    pop.textContent = "";
+    const add = (tag, cls, text) => { const el = document.createElement(tag); if (cls) el.className = cls; el.textContent = text; pop.append(el); return el; };
+    add("b", "", "Bugünkü ücretsiz hak");
+    const rest = Math.max(0, q.limit - quotaUsed(q));
+    if (q.out) add("span", "big", "Google bugünkü hakkın bittiğini bildirdi.");
+    else if (pct !== null) add("span", "big", "Kalan ≈ %" + pct + " · " + (q.unit === "tok" ? fmtTok(rest) + " token" : fmtNum(rest) + " istek"));
+    else add("span", "big", "Günlük sınır henüz girilmedi.");
+    add("span", "", "Bugün: " + fmtNum(q.reqs) + " istek · ≈ " + fmtTok(q.tokIn + q.tokOut) + " token");
+    add("span", "", "Her gün " + atTime(resetClock()) + " yeniden dolar.");
+    add("span", "hint", "Sayfa yalnızca bu cihazda, bu anahtarla yapılan kullanımı sayar. Kesin değer AI Studio'dadır.");
+    const b = add("button", "small", q.limit > 0 ? "Sınırı değiştir" : "Sınırı gir");
+    b.type = "button";
+    b.onclick = () => { els.meter.open = false; els.settings.open = true; els.quotaLimit.focus(); els.quotaLimit.scrollIntoView({ block: "center", behavior: "smooth" }); };
+  }
+  function renderQuotaSettings() {
+    const q = quota();
+    els.quotaLimit.value = q.limit > 0 ? String(q.limit) : "";
+    els.quotaUnit.value = q.unit === "tok" ? "tok" : "req";
+    els.quotaLimit.placeholder = q.unit === "tok" ? "ör. 1000000" : "ör. 50";
+    $("quotaReset").textContent = atTime(resetClock());
+  }
+  els.quotaLimit.onchange = () => { const q = quota(); const v = parseInt(els.quotaLimit.value, 10); q.limit = v > 0 ? v : 0; saveQuota(); renderQuotaSettings(); renderMeter(); };
+  els.quotaUnit.onchange = () => { quota().unit = els.quotaUnit.value === "tok" ? "tok" : "req"; saveQuota(); renderQuotaSettings(); renderMeter(); };
+  document.addEventListener("click", (e) => { if (els.meter.open && !els.meter.contains(e.target)) els.meter.open = false; });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && els.meter.open) { els.meter.open = false; els.meterSum.focus(); } });
+  setInterval(() => { renderMeter(); if (els.settings.open) $("quotaReset").textContent = atTime(resetClock()); }, 60000);   // gün dönümü
+  renderQuotaSettings(); renderMeter();
+  requestAnimationFrame(() => requestAnimationFrame(() => els.meter.classList.remove("init")));
 
   // ---------- Arayüz durumu ----------
   function setState(kind, title, sub) {
@@ -713,7 +883,23 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     textVia: "realtime", lastTextSent: null
   };
 
-  const workingLevel = new Map(); // model -> bu sayfa açıkken kabul edilen kurulum basamağı
+  const workingLevel = new Map(); // model -> kabul edilen kurulum basamağı
+  // "Tam sessizlik desteklenmiyor" bulgusu 7 gün hatırlanır: her açılışta reddedilecek bir bağlantıyla istek harcanmaz.
+  // Daha ileri basamaklar yalnızca bu sayfa açıkken geçerlidir (tek seferlik bir hata haftalarca sadeleştirmesin).
+  try {
+    const saved = JSON.parse(store.get("levels", "{}")) || {};
+    for (const [m, v] of Object.entries(saved)) if (v && v.level === 1 && Date.now() - v.at < 7 * 864e5) workingLevel.set(m, 1);
+  } catch {}
+  function rememberLevel(model, level) {
+    workingLevel.set(model, level);
+    try {
+      const saved = JSON.parse(store.get("levels", "{}")) || {};
+      const fresh = saved[model] && saved[model].level === 1 && Date.now() - saved[model].at < 7 * 864e5;
+      if (level === 1) saved[model] = { level: 1, at: fresh ? saved[model].at : Date.now() };   // 7 günde bir yeniden denenir
+      else delete saved[model];
+      store.set("levels", JSON.stringify(saved));
+    } catch {}
+  }
   function levelFor(model) { return workingLevel.get(model) || 0; }
 
   // Basamaklar: 0 hepsi · 1 tam sessizlik yok · 2 Türkçe döküm ipucu yok · 3 ses seçimi yok
@@ -752,7 +938,9 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     const raw = reason ? "<br><span class=\"hint\">Google'ın yanıtı: " + escapeHtml(reason) + "</span>" : "";
     switch (kind) {
       case "key": return "<b>Anahtar kabul edilmedi.</b> AI Studio'dan kopyalarken eksik kalmış olabilir. Ayarlar'dan yeniden yapıştırıp Kaydet'e basın." + raw;
-      case "quota": return "<b>Ücretsiz kullanım sınırına ulaşıldı.</b> Birkaç dakika bekleyip tekrar deneyin ya da Ayarlar'dan başka bir model seçin." + raw;
+      case "quota": return isDailyQuota(reason)
+        ? "<b>Bugünkü ücretsiz hakkınız bitti.</b> Her gün " + atTime(resetClock()) + " yeniden dolar." + raw
+        : "<b>Ücretsiz kullanım sınırına ulaşıldı.</b> Birkaç dakika bekleyip tekrar deneyin ya da Ayarlar'dan başka bir model seçin." + raw;
       case "region": return "<b>Bu hizmet bulunduğunuz yerden kullanılamıyor görünüyor.</b>" + raw;
       case "model": return "<b>Seçili model şu an kullanılamıyor.</b> Ayarlar'dan başka bir model seçip tekrar başlatın." + raw;
       case "billing": return "<b>Google, bu anahtarın bağlı olduğu projede ön ödemeli kredinin bittiğini söylüyor.</b> Proje ücretli planda görünüyor. AI Studio'da faturalandırması olmayan yeni bir proje açın, o projede yeni bir anahtar oluşturup Ayarlar'a yapıştırın." + raw;
@@ -772,11 +960,17 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
       ws.onmessage = (ev) => {
         const msg = parse(ev.data);
         if (!msg) return;
-        if (!done && msg.setupComplete !== undefined) { done = true; clearTimeout(timer); resolve(ws); }
+        if (!done && msg.setupComplete !== undefined) { done = true; clearTimeout(timer); countRequest(); resolve(ws); }
         if (done) onServer(ws, msg);
       };
       ws.onclose = (ev) => {
-        if (!done) { done = true; clearTimeout(timer); reject({ kind: classify(ev.code, ev.reason), code: ev.code, reason: ev.reason, opened }); }
+        if (!done) {
+          done = true; clearTimeout(timer);
+          const kind = classify(ev.code, ev.reason);
+          if (kind === "config") countRequest();          // Google'a ulaşıp reddedilen kurulum da istek sayılabilir
+          if (kind === "quota") noteQuotaError(ev.reason);
+          reject({ kind, code: ev.code, reason: ev.reason, opened });
+        }
         else onClose(ws, ev);
       };
       ws.onerror = () => {};
@@ -793,7 +987,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
       try {
         const ws = await handshake(level);
         session.level = level;
-        workingLevel.set(cfg.model, level);
+        if (level <= 1) rememberLevel(cfg.model, level); else workingLevel.set(cfg.model, level);
         return ws;
       } catch (e) {
         lastErr = e;
@@ -822,6 +1016,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
   function rawSend(ws, obj) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj)); }
   function sendAudio(b64) {
     if (session.paused) return;
+    ctxEst.tok += CHUNK / IN_RATE * TOK_PER_SEC;
     if (session.ready && session.ws && session.ws.readyState === 1) rawSend(session.ws, { realtimeInput: { audio: { data: b64, mimeType: "audio/pcm;rate=16000" } } });
     else if (session.reconnecting) { session.buffer.push(b64); if (session.buffer.length > 160) session.buffer.shift(); }
   }
@@ -831,6 +1026,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     if (session.textVia === "client") rawSend(session.ws, { clientContent: { turns: [{ role: "user", parts: [{ text }] }], turnComplete: true } });
     else rawSend(session.ws, { realtimeInput: { text } });
     session.lastTextSent = { text, at: Date.now() };
+    ctxEst.tok += text.length / 4;
     session.expectingAnswer = true;
     addLog("sys", text === DONE_TEXT ? "Anlatımın bittiği bildirildi." : "Eksik olup olmadığı soruldu.");
     session.thinkingSince = Date.now();
@@ -839,6 +1035,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
 
   function onServer(ws, msg) {
     if (ws !== session.ws && session.ws) { /* eski bağlantıdan gelen son mesajlar */ }
+    if (msg.usageMetadata) noteUsage(msg.usageMetadata);
     if (msg.sessionResumptionUpdate) {
       const u = msg.sessionResumptionUpdate;
       if (u.resumable !== false && u.newHandle) session.handle = u.newHandle;
@@ -857,14 +1054,14 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
         if (session.dialogChars > DIALOG_MAX_CHARS) session.dialogOpen = false;   // konu anlatımına döndünüz
       }
     }
-    if (sc.interrupted) abortTurn(true);
+    if (sc.interrupted) { abortTurn(true); turnUsageDone(); }
     if (sc.modelTurn && Array.isArray(sc.modelTurn.parts)) {
       for (const p of sc.modelTurn.parts) {
         if (p.inlineData && p.inlineData.data && /audio/.test(p.inlineData.mimeType || "audio/pcm")) palAudio(p.inlineData.data, p.inlineData.mimeType);
       }
     }
     if (sc.outputTranscription && sc.outputTranscription.text) palText(sc.outputTranscription.text);
-    if (sc.turnComplete) turnDone();
+    if (sc.turnComplete) { turnDone(); turnUsageDone(); }
   }
 
   // ---------- Dinleyicinin cevabı: önce bekletilir, dolgu sözse hiç çalınmaz ----------
@@ -883,6 +1080,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
   function palAudio(b64, mime) {
     const t = (turn && !turn.done) ? turn : newTurn();
     const sec = chunkSec(b64, mime);
+    noteOutAudio(sec);   // susturulan cevaplar da üretildiği için hakkı harcar
     if (t.decided) { if (t.play) { playChunk(b64, mime); t.playedSec += sec; } return; }
     t.queue.push([b64, mime]); t.sec += sec;
     weigh(t);
@@ -979,6 +1177,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     session.ready = false;
     if (!session.running) return;
     const kind = classify(ev.code, ev.reason);
+    if (kind === "quota") noteQuotaError(ev.reason);
     if (kind === "key" || kind === "quota" || kind === "billing" || kind === "region" || kind === "model") { fail(kind, ev.reason); return; }
     if (session.lastTextSent && Date.now() - session.lastTextSent.at < 3000 && /text|realtime_input|client_content/i.test(ev.reason || "")) {
       session.textVia = session.textVia === "realtime" ? "client" : "realtime";
@@ -991,7 +1190,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     session.reconnecting = true; session.ready = false;
     const old = session.ws; session.ws = null;
     if (old) { try { old.onclose = null; old.close(1000); } catch {} }
-    abortTurn(true);
+    abortTurn(true); commitTurnUsage();
     if (why !== "rollover") setState("live", "Yeniden bağlanıyor", "Anlatmaya devam edebilirsiniz; bu arada söyledikleriniz bekletiliyor.");
     session.contextLost = !session.handle;
     for (let i = 0; i < 6 && session.running; i++) {
@@ -1001,6 +1200,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
         const ws = await openSession();
         if (!session.running) { try { ws.close(1000); } catch {} return; }
         attach(ws);
+        if (session.contextLost) ctxEst.tok = instruction().length / 4;
         if (session.contextLost) addLog("sys", "Bağlantı yenilendi. Dinleyici önceki anlattıklarınızı hatırlamayabilir.");
         else if (why !== "rollover") addLog("sys", "Bağlantı yenilendi.");
         if (session.retryText) { const t = session.retryText; session.retryText = null; sendText(t); }
@@ -1068,6 +1268,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     if (!resumed) clearLecture();
     Object.assign(session, { running: true, paused: false, ready: false, handle: null, level: levelFor(cfg.model), startedAt: Date.now(), reconnecting: false, buffer: [], textVia: "realtime", lastTextSent: null, retryText: null, levelNoted: false, uiSpeaking: false, thinkingSince: 0, contextLost: false, expectingAnswer: false, userTail: "", dialogOpen: false, dialogChars: 0 });
     resetGate();
+    commitTurnUsage(); ctxEst.tok = instruction().length / 4;   // Google tarafında yeni, boş bir oturum
     setState("live", "Bağlanıyor", "Birkaç saniye sürebilir.");
     session.reconnecting = true; // bağlanırken söylenenler bekletilsin
     try {
@@ -1090,7 +1291,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     session.running = false; session.ready = false; session.reconnecting = false; session.buffer = [];
     if (session.ws) { try { session.ws.onclose = null; session.ws.close(1000); } catch {} }
     session.ws = null;
-    abortTurn(false); stopMic(); resetGate();
+    abortTurn(false); stopMic(); resetGate(); commitTurnUsage();
     if (was && !fromError) addLog("sys", "Durduruldu (" + elapsed() + ").");
     if (session.startedAt) { lecture.baseMs = lectureMs(); session.startedAt = 0; }   // süre derste kalır
     lecture.dirty = true; saveLecture();
@@ -1127,7 +1328,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
   if (hasLecture()) setState("idle", "Kaldığınız yer hazır", resumeHint());
 
   // Test kancası (yalnızca ?ws= ile açıldığında)
-  if (WS_OVERRIDE) window.__tus = { session, notes, log, cfg, audio, gate, barge, lecture };
+  if (WS_OVERRIDE) window.__tus = { session, notes, log, cfg, audio, gate, barge, lecture, quota, turnUse, ctxEst, usageLog };
 })();
 </script>
 </body>
