@@ -122,6 +122,7 @@ details.log summary { cursor: pointer; font-weight: 600; font-size: 0.92rem; }
 .transcript .me .who { color: var(--hema); }
 .transcript .pal .who { color: var(--eosin); }
 .transcript .sys { color: var(--muted); font-style: italic; }
+.transcript .muted { opacity: 0.55; }
 .live-line { color: var(--muted); font-style: italic; min-height: 1.4em; overflow-wrap: anywhere; }
 
 /* Ayarlar */
@@ -273,7 +274,7 @@ a { color: var(--hema); }
 Gerçekten konuşman gereken yalnızca üç durum var:
 1. Aday tıbben yanlış bir bilgi söylediğinde (yanlış hormon, yanlış hücre, ters etki, yanlış sayı gibi).
 2. TUS'ta sık sorulan kritik bir noktayı atlayıp başka konuya geçtiğinde.
-3. Aday sana doğrudan bir soru sorduğunda.
+3. Aday sana bir soru sorduğunda ("…değil mi?", "…doğru mu?", "neden…", "nasıl…", "hangisi…" gibi). Sorulara her zaman kısa ve net cevap ver; bir soruya asla "Tamam" diye karşılık verme.
 Bu durumlarda en fazla iki kısa cümleyle söyle. Sözünü "devam et" gibi bir ifadeyle bitirme. Doğru anlatılanı tekrar etme, özet yapma, övme, soru sorma.
 
 Bu üç durumun dışında her seferinde yalnızca tek bir kelime söyle: "Tamam". Başka hiçbir kelime, açıklama, sembol ya da not ekleme. "Sessizlik", "silence", "<!-- -->", parantez içi açıklamalar gibi şeyler kesinlikle üretme. Bu tek kelime adaya hiç duyurulmuyor; sadece söyleyecek bir şeyin olmadığını gösteriyor.
@@ -283,8 +284,11 @@ Aday "bitti" dediğinde ya da senden eksikleri istediğinde, anlatımda atlanan 
 Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
   const CHECK_TEXT = "Şu ana kadar anlattıklarımda kritik bir yanlış ya da TUS için önemli bir eksik var mı? Varsa en fazla iki kısa cümleyle söyle, yoksa sadece \"eksik yok\" de.";
   const DONE_TEXT = "Anlatımım bitti. Atladığım en önemli noktaları en fazla beş kısa madde olarak söyle.";
-  const TRIVIAL_WORDS = new Set(["hı", "hıhı", "hı-hı", "hıı", "hi", "hihi", "hı-ı", "mhm", "hmm", "hm", "evet", "tamam", "tamamdır", "devam", "et", "edebilirsin", "edebilirsiniz", "ediyorum", "anladım", "peki", "okey", "ok", "okay", "dinliyorum", "güzel", "olur", "iyi", "doğru", "aynen", "harika", "süper", "çok", "gayet", "gidiyorsun", "gidiyorsunuz", "bravo", "tebrikler", "sorun", "yok", "eksik", "edin",
+  // Her zaman susturulan işaret ve dolgu sözleri ("Tamam" talimattaki "söyleyecek bir şeyim yok" işaretidir)
+  const MARKER_WORDS = new Set(["tamam", "tamamdır", "hı", "hıhı", "hı-hı", "hıı", "hi", "hihi", "hı-ı", "mhm", "hmm", "hm", "devam", "et", "edebilirsin", "edebilirsiniz", "ediyorum", "dinliyorum", "okey", "ok", "okay",
     "sessizlik", "sessiz", "kalıyorum", "susuyorum", "bekliyorum", "dinlemedeyim", "dinlemeye", "silence", "silent", "pause", "listening", "quiet", "none", "nothing", "no", "response"]);
+  // Soru sorulmadıysa susturulan onay sözleri; soru sorulduysa bunlar cevaptır ve çalınır
+  const AFFIRM_WORDS = new Set(["evet", "anladım", "peki", "güzel", "olur", "iyi", "doğru", "aynen", "harika", "süper", "çok", "gayet", "gidiyorsun", "gidiyorsunuz", "bravo", "tebrikler", "sorun", "yok", "eksik", "edin"]);
   // Söyleyecek bir şey yoksa modelin ürettiği işaretleri ve dolgu sözleri tanır; bunlar hiç çalınmaz.
   // Yarım gelmiş parçaları da (ör. "<!-- Sil") tanır, çünkü karar parça parça gelen döküme göre veriliyor.
   function stripMarks(text) {
@@ -295,12 +299,15 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
       .replace(/\*[^*]*(\*|$)/g, " ")
       .replace(/<[^>]*(>|$)/g, " ");
   }
-  function isTrivial(text) {
+  function isTrivial(text, question) {
     const words = stripMarks(text).toLocaleLowerCase("tr").replace(/[^\p{L}\s-]/gu, " ").split(/\s+/).filter(Boolean);
     if (!words.length) return true;
     if (words.length > 5) return false;
-    return words.every(w => TRIVIAL_WORDS.has(w) || /^h[ıi]+(-?h?[ıi]+)*m*$/.test(w) || /^m+h*m+$/.test(w));
+    return words.every(w => MARKER_WORDS.has(w) || (!question && AFFIRM_WORDS.has(w)) || /^h[ıi]+(-?h?[ıi]+)*m*$/.test(w) || /^m+h*m+$/.test(w));
   }
+  // Söylediklerinizin sonunda bir soru var mı? ("değil mi", "doğru mu", "mı/mi/mu/mü", soru sözcükleri, "?")
+  const Q_RE = /\?|(^|[\s,])(m[ıiuü](s[ıiuü]n(ız|iz|uz|üz)?|y[ıiuü]m|y[ıiuü]z|d[ıiuü]r|yd[ıiuü])?|ne|neden|niye|niçin|nasıl|hangi|hangisi|hangileri|kim|kimdir|kaç|nedir|nerede|nereden|nereye)(?=[\s,.!?…]|$)/;
+  function looksLikeQuestion(text) { return !!text && Q_RE.test(text.toLocaleLowerCase("tr").slice(-160)); }
 
   // ---------- Kısayollar ----------
   const $ = (id) => document.getElementById(id);
@@ -329,9 +336,9 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     voice: store.get("voice", "Kore"),
     model: store.get("model", "gemini-3.8-live"),
     topic: store.get("topic", ""),
-    customPrompt: store.get("prompt3", "")
+    customPrompt: store.get("prompt4", "")
   };
-  store.del("prompt"); store.del("prompt2"); store.del("style"); // eski sürümün talimat ve tarz kayıtları
+  store.del("prompt"); store.del("prompt2"); store.del("prompt3"); store.del("style"); // eski sürümün talimat ve tarz kayıtları
 
   function renderSettings() {
     els.apiKey.value = cfg.key;
@@ -366,11 +373,11 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
   els.topic.onchange = () => { cfg.topic = els.topic.value.trim(); store.set("topic", cfg.topic); };
   els.prompt.onchange = () => {
     const v = els.prompt.value.trim();
-    if (!v || v === DEFAULT_PROMPT.trim()) { cfg.customPrompt = ""; store.del("prompt3"); }
-    else { cfg.customPrompt = v; store.set("prompt3", v); }
+    if (!v || v === DEFAULT_PROMPT.trim()) { cfg.customPrompt = ""; store.del("prompt4"); }
+    else { cfg.customPrompt = v; store.set("prompt4", v); }
     renderSettings();
   };
-  $("resetPrompt").onclick = () => { cfg.customPrompt = ""; store.del("prompt3"); renderSettings(); };
+  $("resetPrompt").onclick = () => { cfg.customPrompt = ""; store.del("prompt4"); renderSettings(); };
 
   function instruction() {
     const base = cfg.customPrompt || DEFAULT_PROMPT;
@@ -408,9 +415,9 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     const entry = { who, text, at: elapsed() };
     log.push(entry);
     const div = document.createElement("div");
-    div.className = who === "me" ? "me" : who === "pal" ? "pal" : "sys";
+    div.className = who === "me" ? "me" : who === "pal" ? "pal" : who === "muted" ? "pal muted" : "sys";
     if (who === "sys") div.textContent = text;
-    else { const w = document.createElement("span"); w.className = "who"; w.textContent = who === "me" ? "Siz:" : "Dinleyici:"; const s = document.createElement("span"); s.textContent = text; div.append(w, s); }
+    else { const w = document.createElement("span"); w.className = "who"; w.textContent = who === "me" ? "Siz:" : who === "muted" ? "Dinleyici (susturuldu):" : "Dinleyici:"; const s = document.createElement("span"); s.textContent = text; div.append(w, s); }
     entry.el = div;
     els.transcript.append(div);
     if (els.transcript.children.length > 400) els.transcript.firstChild.remove();
@@ -425,7 +432,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
   $("copyBtn").onclick = async () => {
     const lines = ["TUS Dinleyici — notlar" + (els.topic.value.trim() ? " (" + els.topic.value.trim() + ")" : "")];
     notes.forEach(n => lines.push(n.at + "  " + n.text));
-    if (log.length) { lines.push("", "Döküm:"); log.forEach(l => lines.push((l.who === "me" ? "Siz: " : l.who === "pal" ? "Dinleyici: " : "— ") + l.text.trim())); }
+    if (log.length) { lines.push("", "Döküm:"); log.forEach(l => lines.push((l.who === "me" ? "Siz: " : l.who === "pal" ? "Dinleyici: " : l.who === "muted" ? "Dinleyici (susturuldu): " : "— ") + l.text.trim())); }
     const text = lines.join("\n");
     try { await navigator.clipboard.writeText(text); $("copyBtn").textContent = "Kopyalandı"; }
     catch { const ta = document.createElement("textarea"); ta.value = text; document.body.append(ta); ta.select(); try { document.execCommand("copy"); $("copyBtn").textContent = "Kopyalandı"; } catch {} ta.remove(); }
@@ -723,6 +730,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
       els.liveLine.textContent = "";
       if (!curMe) curMe = addLog("me", "");
       appendTo(curMe, sc.inputTranscription.text);
+      session.userTail = ((session.userTail || "") + sc.inputTranscription.text).slice(-300);
     }
     if (sc.interrupted) abortTurn(true);
     if (sc.modelTurn && Array.isArray(sc.modelTurn.parts)) {
@@ -742,7 +750,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
   function chunkSec(b64, mime) { const m = /rate=(\d+)/.exec(mime || ""); const rate = m ? parseInt(m[1], 10) : OUT_RATE; return (Math.floor(b64.length * 3 / 4) >> 1) / rate; }
   function newTurn() {
     if (turn) finalizeTurn(turn, false);
-    turn = { queue: [], sec: 0, playedSec: 0, text: "", decided: false, play: false, asked: !!session.expectingAnswer, done: false, entry: null, timer: 0 };
+    turn = { queue: [], sec: 0, playedSec: 0, text: "", decided: false, play: false, asked: !!session.expectingAnswer, question: false, done: false, entry: null, timer: 0 };
     return turn;
   }
   function palAudio(b64, mime) {
@@ -762,11 +770,16 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     if (t.decided) return;
     const txt = t.text.trim();
     const gate = session.level >= 4 ? GATE_SEC : GATE_SEC_TX;
-    if (t.asked || (txt && !isTrivial(txt)) || t.sec > gate) decide(t, true);
+    if (!t.question && looksLikeQuestion(session.userTail)) t.question = true;
+    if (t.asked || (txt && !isTrivial(txt, t.question)) || t.sec > gate) decide(t, true);
   }
   function decide(t, play) {
     if (t.decided) return;
     t.decided = true; t.play = play;
+    if (!play) {
+      const txt = t.text.trim();
+      if (txt && !isTrivial(txt, true)) addLog("muted", stripMarks(txt).replace(/\s+/g, " ").trim());
+    }
     if (play) {
       curMe = null; els.liveLine.textContent = "";
       t.entry = addLog("pal", t.text);
@@ -785,8 +798,9 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     t.timer = setTimeout(() => {
       if (!t.decided) {
         const txt = t.text.trim();
+        if (!t.question && looksLikeQuestion(session.userTail)) t.question = true;
         // Yazısı hiç gelmeyen uzun bir cevap gerçek bir uyarı olabilir; kısa ve yazısızsa dolgudur.
-        decide(t, txt ? !isTrivial(txt) : t.sec > (session.level >= 4 ? GATE_SEC : 2.5));
+        decide(t, txt ? !isTrivial(txt, t.question) : t.sec > (session.level >= 4 ? GATE_SEC : 2.5));
       }
       finalizeTurn(t, false);
     }, 700);
@@ -802,14 +816,14 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     if (t.play && t.entry) {
       const text = t.entry.text.trim();
       if (!text && !interrupted && t.playedSec > 1.5 && session.level >= 4) addNote("(Sesli bir uyarı yaptı; bu modelde yazıya dökülemedi.)");
-      else if (text && !isTrivial(text)) {
+      else if (text && !isTrivial(text, t.question)) {
         const clean = stripMarks(text).replace(/\s+/g, " ").replace(/[\s,.;:!]*\b(devam et(ebilirsin)?|devam edebilirsin|devam)\s*[.!…]*\s*$/i, "").trim();
         addNote((clean || text) + (interrupted ? " …" : (/[.!?…]$/.test(clean) ? "" : ".")));
       }
       if (!text) { t.entry.el.remove(); log.splice(log.indexOf(t.entry), 1); }
     }
     if (turn === t) turn = null;
-    curMe = null;
+    curMe = null; session.userTail = "";
     if (!palSpeaking()) { session.thinkingSince = 0; listeningState(); }
   }
   function listeningState() {
@@ -914,7 +928,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
         : "<b>Mikrofon açılamadı.</b> Bilgisayara bağlı bir mikrofon olduğundan emin olun." + (e && e.message ? "<br><span class=\"hint\">" + escapeHtml(e.message) + "</span>" : ""));
       return;
     }
-    Object.assign(session, { running: true, paused: false, ready: false, handle: null, level: levelFor(cfg.model), startedAt: Date.now(), reconnecting: false, buffer: [], textVia: "realtime", lastTextSent: null, retryText: null, levelNoted: false, uiSpeaking: false, thinkingSince: 0, contextLost: false, expectingAnswer: false });
+    Object.assign(session, { running: true, paused: false, ready: false, handle: null, level: levelFor(cfg.model), startedAt: Date.now(), reconnecting: false, buffer: [], textVia: "realtime", lastTextSent: null, retryText: null, levelNoted: false, uiSpeaking: false, thinkingSince: 0, contextLost: false, expectingAnswer: false, userTail: "" });
     resetGate();
     setState("live", "Bağlanıyor", "Birkaç saniye sürebilir.");
     session.reconnecting = true; // bağlanırken söylenenler bekletilsin
