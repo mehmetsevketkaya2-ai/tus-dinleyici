@@ -560,7 +560,13 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
   const PRE_ROLL_CHUNKS = Math.ceil(1200 / CHUNK_MS);   // ~1,2 sn
   const FLOOR_WIN = Math.ceil(8000 / CHUNK_MS);        // gürültü tabanı için son ~8 sn
   const gate = { sending: false, ring: [], quietMs: 0, hot: 0, levels: [] };
-  function resetGate() { gate.sending = false; gate.ring = []; gate.quietMs = 0; gate.hot = 0; }
+  // Dinleyici konuşurken: "hı hı", "evet", "aynen öyle" gibi kısa onaylar gönderilmez (dinleyici cümlesini bitirir).
+  // BARGE_MS'den uzun konuşursanız sözünüzün başından itibaren gönderilir ve dinleyici susar.
+  const BARGE_MS = 1500;                               // "hı hı", "evet", "aynen öyle" bunun altında kalır
+  const BARGE_GAP_MS = 350;                             // hece arası boşluk sayılan en uzun sessizlik
+  const barge = { pre: [], buf: [], speechMs: 0, quietMs: 0, active: false };
+  function resetBarge() { barge.pre = []; barge.buf = []; barge.speechMs = 0; barge.quietMs = 0; barge.active = false; }
+  function resetGate() { gate.sending = false; gate.ring = []; gate.quietMs = 0; gate.hot = 0; resetBarge(); }
   // Ortam gürültüsü = son 8 sn'nin en sessiz %5'lik dilimi. Konuşmada kelime aralarındaki boşluklar
   // bu dilime düşer; sabit bir gürültü (fan, klima) ise kendisi taban olur ve konuşma sayılmaz.
   function noiseFloor() {
@@ -572,6 +578,29 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     if (gate.levels.length > FLOOR_WIN) gate.levels.shift();
     const thr = Math.max(0.008, noiseFloor() * 3);
     const speech = level > thr;
+    if (!palSpeaking()) barge.active = false;
+    else if (!barge.active) {
+      // Dinleyici konuşuyor: sesinizi beklet, kısa onayları at
+      gate.sending = false; gate.quietMs = 0; gate.hot = 0;
+      if (speech) {
+        if (!barge.buf.length) barge.pre = gate.ring.slice(-6);   // sözün hemen öncesi (~0,4 sn)
+        barge.buf.push(b64); barge.speechMs += CHUNK_MS; barge.quietMs = 0;
+      } else if (barge.buf.length) {
+        barge.buf.push(b64); barge.quietMs += CHUNK_MS;
+        if (barge.quietMs > BARGE_GAP_MS) { barge.pre = []; barge.buf = []; barge.speechMs = 0; barge.quietMs = 0; }
+      }
+      gate.ring.push(b64);
+      if (gate.ring.length > PRE_ROLL_CHUNKS) gate.ring.shift();
+      if (barge.speechMs >= BARGE_MS) {
+        // Gerçekten söze girdiniz: baştan itibaren gönder, dinleyici susacak
+        barge.active = true;
+        const out = barge.pre.concat(barge.buf);
+        barge.pre = []; barge.buf = []; barge.speechMs = 0; barge.quietMs = 0;
+        gate.sending = true; gate.quietMs = 0; gate.ring = [];
+        out.forEach(sendAudio);
+      }
+      return;
+    }
     if (gate.sending) {
       sendAudio(b64);
       gate.quietMs = speech ? 0 : gate.quietMs + CHUNK_MS;
@@ -983,7 +1012,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
   window.addEventListener("beforeunload", () => { if (session.ws) try { session.ws.close(1000); } catch {} });
 
   // Test kancası (yalnızca ?ws= ile açıldığında)
-  if (WS_OVERRIDE) window.__tus = { session, notes, log, cfg, audio, gate };
+  if (WS_OVERRIDE) window.__tus = { session, notes, log, cfg, audio, gate, barge };
 })();
 </script>
 </body>
