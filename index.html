@@ -159,6 +159,7 @@ a { color: var(--hema); }
       <div id="alert" class="alert" role="alert" hidden></div>
       <div class="controls">
         <button class="primary" id="startBtn" type="button">Anlatmaya başla</button>
+        <button id="newBtn" type="button" hidden title="Notları ve dökümü silip yeni bir derse başlar">Yeni ders</button>
       </div>
       <div class="controls">
         <button id="pauseBtn" type="button" disabled>Duraklat</button>
@@ -177,7 +178,7 @@ a { color: var(--hema); }
         <div><div class="eyebrow">Dinleyicinin uyarıları</div><h2>Notlar</h2></div>
         <div class="row">
           <button class="small" id="copyBtn" type="button">Notları kopyala</button>
-          <button class="small" id="clearBtn" type="button">Temizle</button>
+          <button class="small" id="clearBtn" type="button" title="Notları, dökümü ve süreyi siler; yeni bir derse başlarsınız">Temizle</button>
         </div>
       </div>
       <ol id="notes" aria-live="polite"></ol>
@@ -332,7 +333,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
   // ---------- Ayarlar ----------
   const els = {
     orb: $("orb"), title: $("stateTitle"), sub: $("stateSub"), alert: $("alert"),
-    start: $("startBtn"), pause: $("pauseBtn"), check: $("checkBtn"), done: $("doneBtn"),
+    start: $("startBtn"), newBtn: $("newBtn"), pause: $("pauseBtn"), check: $("checkBtn"), done: $("doneBtn"),
     topic: $("topic"), notes: $("notes"), notesEmpty: $("notesEmpty"), transcript: $("transcript"), liveLine: $("liveLine"),
     clock: $("clock"),
     apiKey: $("apiKey"), keyStatus: $("keyStatus"), settings: $("settings"), silence: $("silence"), silenceOut: $("silenceOut"),
@@ -407,7 +408,9 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
   const notes = [];
   const log = [];
   let curMe = null;
-  function elapsed() { return session.startedAt ? fmtClock(Date.now() - session.startedAt) : "00:00"; }
+  // Anlatım süresi derse aittir: durdurup devam ettiğinizde ya da sayfadan çıkıp döndüğünüzde kaldığı yerden sürer.
+  function lectureMs() { return lecture.baseMs + (session.startedAt ? Date.now() - session.startedAt : 0); }
+  function elapsed() { return fmtClock(lectureMs()); }
   function renderNotes() {
     els.notes.innerHTML = "";
     notes.forEach(n => {
@@ -418,9 +421,9 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     });
     els.notesEmpty.hidden = notes.length > 0;
   }
-  function addNote(text) { notes.push({ at: elapsed(), text }); renderNotes(); }
-  function addLog(who, text) {
-    const entry = { who, text, at: elapsed() };
+  function addNote(text) { notes.push({ at: elapsed(), text }); renderNotes(); saveSoon(); }
+  function addLog(who, text, at) {
+    const entry = { who, text, at: at || elapsed() };
     log.push(entry);
     const div = document.createElement("div");
     div.className = who === "me" ? "me" : who === "pal" ? "pal" : who === "muted" ? "pal muted" : "sys";
@@ -430,12 +433,14 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     els.transcript.append(div);
     if (els.transcript.children.length > 400) els.transcript.firstChild.remove();
     els.transcript.scrollTop = els.transcript.scrollHeight;
+    saveSoon();
     return entry;
   }
   function appendTo(entry, frag) {
     entry.text += frag;
     entry.el.lastChild.textContent = entry.text;
     els.transcript.scrollTop = els.transcript.scrollHeight;
+    saveSoon();
   }
   $("copyBtn").onclick = async () => {
     const lines = ["TUS Dinleyici — notlar" + (els.topic.value.trim() ? " (" + els.topic.value.trim() + ")" : "")];
@@ -446,8 +451,87 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     catch { const ta = document.createElement("textarea"); ta.value = text; document.body.append(ta); ta.select(); try { document.execCommand("copy"); $("copyBtn").textContent = "Kopyalandı"; } catch {} ta.remove(); }
     setTimeout(() => $("copyBtn").textContent = "Notları kopyala", 1800);
   };
-  $("clearBtn").onclick = () => { notes.length = 0; log.length = 0; els.transcript.innerHTML = ""; renderNotes(); };
+  $("clearBtn").onclick = () => {
+    clearLecture();
+    if (!session.running) { idleButtons(); setState("idle", "Hazır", "Başlamak için düğmeye basın, sonra anlatmaya başlayın."); }
+  };
   renderNotes();
+
+  // ---------- Kaldığınız yer ----------
+  // Notlar, döküm ve anlatım süresi yalnızca bu tarayıcıda saklanır; sayfadan çıkıp dönünce yerinde olur.
+  // Google'a bunlardan hiçbiri gönderilmez: devam ettiğinizde dinleyici yeni bir oturumla, yalnızca konuyu
+  // bilerek başlar. Eski konuşma her cevapta yeniden faturalanmadığı için fazladan kota harcanmaz.
+  const lecture = { baseMs: 0, savedAt: 0, dirty: false, timer: 0, lastSave: 0, restoring: false };
+  const LECTURE_MAX_LOG = 400;           // saklanan en fazla döküm satırı
+  const LECTURE_MAX_CHARS = 400000;      // tarayıcı deposunu şişirmemek için üst sınır
+  function hasLecture() { return notes.length > 0 || lectureMs() >= 60000 || log.some(l => l.who === "me" || l.who === "pal" || l.who === "muted"); }
+  function saveSoon() {
+    if (lecture.restoring) return;
+    lecture.dirty = true;
+    if (!lecture.timer) lecture.timer = setTimeout(saveLecture, 2500);
+  }
+  function saveLecture() {
+    clearTimeout(lecture.timer); lecture.timer = 0;
+    if (!lecture.dirty && !session.startedAt) return;   // değişiklik yoksa kayıt zamanı da değişmesin
+    lecture.dirty = false; lecture.lastSave = Date.now();
+    if (!hasLecture()) { store.del("lecture"); return; }
+    const data = {
+      v: 1, savedAt: Date.now(), ms: Math.round(lectureMs()),
+      notes: notes.map(n => ({ at: n.at, text: n.text })),
+      log: log.filter(l => l.text && l.text.trim()).slice(-LECTURE_MAX_LOG).map(l => ({ who: l.who, at: l.at, text: l.text }))
+    };
+    let json = JSON.stringify(data);
+    while (json.length > LECTURE_MAX_CHARS && data.log.length > 20) { data.log = data.log.slice(Math.floor(data.log.length / 2)); json = JSON.stringify(data); }
+    lecture.savedAt = data.savedAt;
+    store.set("lecture", json);
+  }
+  function clearLecture() {
+    notes.length = 0; log.length = 0; curMe = null;
+    els.transcript.innerHTML = ""; els.liveLine.textContent = "";
+    renderNotes();
+    lecture.baseMs = 0; lecture.savedAt = 0; lecture.dirty = false;
+    clearTimeout(lecture.timer); lecture.timer = 0;
+    if (session.startedAt) session.startedAt = Date.now();
+    els.clock.textContent = "00:00";
+    store.del("lecture");
+  }
+  function restoreLecture() {
+    let d = null;
+    try { d = JSON.parse(store.get("lecture", "") || "null"); } catch {}
+    if (!d || d.v !== 1) return;
+    lecture.restoring = true;
+    try {
+      (Array.isArray(d.notes) ? d.notes : []).forEach(n => { if (n && typeof n.text === "string") notes.push({ at: String(n.at || ""), text: n.text }); });
+      (Array.isArray(d.log) ? d.log : []).forEach(l => {
+        if (l && typeof l.text === "string") addLog(["me", "pal", "muted", "sys"].includes(l.who) ? l.who : "sys", l.text, String(l.at || "") || "00:00");
+      });
+      lecture.baseMs = Math.max(0, Number(d.ms) || 0);
+      lecture.savedAt = Number(d.savedAt) || 0;
+    } finally { lecture.restoring = false; }
+    renderNotes();
+    els.clock.textContent = elapsed();
+  }
+  function ago(ts) {
+    const m = Math.floor((Date.now() - ts) / 60000);
+    if (m < 1) return "az önce";
+    if (m < 60) return m + " dk önce";
+    const h = Math.floor(m / 60);
+    if (h < 24) return h + " saat önce";
+    const d = Math.floor(h / 24);
+    return d === 1 ? "dün" : d + " gün önce";
+  }
+  function resumeHint() {
+    const parts = [notes.length + " not", elapsed()];
+    if (lecture.savedAt) parts.push(ago(lecture.savedAt));
+    return parts.join(" · ") + ". " + (els.topic.value.trim()
+      ? "Devam ederseniz dinleyici konuyu bilir ama kota harcamamak için önceki anlatımı hatırlamaz."
+      : "Devam ederseniz dinleyici, kota harcamamak için önceki anlatımı hatırlamaz.");
+  }
+  function idleButtons() {
+    const resume = hasLecture();
+    els.start.textContent = resume ? "Kaldığın yerden devam et" : "Anlatmaya başla";
+    els.newBtn.hidden = !resume;
+  }
 
   // ---------- Ses ----------
   const audio = { ctx: null, stream: null, src: null, tap: null, micAn: null, outGain: null, outAn: null, nextT: 0, playing: new Set(), down: null, pending: [] };
@@ -865,7 +949,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
         const clean = stripMarks(stripDisclaimer(text)).replace(/\s+/g, " ").replace(/[\s,.;:!]*\b(devam et(ebilirsin)?|devam edebilirsin|devam)\s*[.!…]*\s*$/i, "").trim();
         addNote((clean || text) + (interrupted ? " …" : (/[.!?…]$/.test(clean) ? "" : ".")));
       }
-      if (!text) { t.entry.el.remove(); log.splice(log.indexOf(t.entry), 1); }
+      if (!text) { t.entry.el.remove(); const i = log.indexOf(t.entry); if (i >= 0) log.splice(i, 1); saveSoon(); }
     }
     if (turn === t) turn = null;
     curMe = null; session.userTail = "";
@@ -943,7 +1027,8 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
       const out = rms(audio.outAn);
       els.orb.style.setProperty("--mic", Math.min(1, mic * 9).toFixed(3));
       els.orb.style.setProperty("--out", Math.min(1, out * 7).toFixed(3));
-      els.clock.textContent = fmtClock(Date.now() - session.startedAt);
+      els.clock.textContent = elapsed();
+      if (Date.now() - lecture.lastSave > 15000) saveLecture();   // sayfa aniden kapanırsa en fazla 15 sn kaybolsun
       if (session.uiSpeaking && !(turn && turn.play && !turn.done) && !palSpeaking()) { session.uiSpeaking = false; listeningState(); }
       if (session.thinkingSince && Date.now() - session.thinkingSince > 15000) { session.thinkingSince = 0; listeningState(); }
     }
@@ -953,7 +1038,9 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
 
   // ---------- Düğmeler ----------
   let wakeLock = null;
-  async function start() {
+  // fresh = "Yeni ders": notlar, döküm ve süre silinip baştan başlanır.
+  // Aksi hâlde kayıtlı bir ders varsa kaldığı yerden sürer; Google tarafında her başlatma yeni ve boş bir oturumdur.
+  async function start(fresh) {
     hideAlert();
     if (!cfg.key && !WS_OVERRIDE) {
       els.settings.open = true; els.apiKey.focus();
@@ -965,17 +1052,20 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
       return;
     }
     cfg.topic = els.topic.value.trim(); store.set("topic", cfg.topic);
-    els.start.disabled = true;
+    els.start.disabled = true; els.newBtn.hidden = true;
     setState("live", "Mikrofon açılıyor", "İzin sorulursa İzin ver'e basın.");
     try { await startMic(); }
     catch (e) {
-      els.start.disabled = false;
-      setState("idle", "Hazır", "Başlamak için düğmeye basın, sonra anlatmaya başlayın.");
+      els.start.disabled = false; idleButtons();
+      if (hasLecture()) setState("idle", "Kaldığınız yer hazır", resumeHint());
+      else setState("idle", "Hazır", "Başlamak için düğmeye basın, sonra anlatmaya başlayın.");
       showAlert(e && e.name === "NotAllowedError"
         ? "<b>Mikrofon izni verilmedi.</b> Adres çubuğunun solundaki simgeye tıklayıp mikrofona izin verin, sonra tekrar deneyin."
         : "<b>Mikrofon açılamadı.</b> Bilgisayara bağlı bir mikrofon olduğundan emin olun." + (e && e.message ? "<br><span class=\"hint\">" + escapeHtml(e.message) + "</span>" : ""));
       return;
     }
+    const resumed = !fresh && hasLecture();
+    if (!resumed) clearLecture();
     Object.assign(session, { running: true, paused: false, ready: false, handle: null, level: levelFor(cfg.model), startedAt: Date.now(), reconnecting: false, buffer: [], textVia: "realtime", lastTextSent: null, retryText: null, levelNoted: false, uiSpeaking: false, thinkingSince: 0, contextLost: false, expectingAnswer: false, userTail: "", dialogOpen: false, dialogChars: 0 });
     resetGate();
     setState("live", "Bağlanıyor", "Birkaç saniye sürebilir.");
@@ -991,7 +1081,8 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     }
     els.start.disabled = false; els.start.textContent = "Durdur"; els.start.classList.add("stop");
     els.pause.disabled = els.check.disabled = els.done.disabled = false;
-    addLog("sys", "Oturum başladı" + (els.topic.value.trim() ? ": " + els.topic.value.trim() : "") + ".");
+    if (resumed) addLog("sys", "Kaldığınız yerden devam (" + elapsed() + "). Dinleyici yeni bir oturumla başladı: " + (els.topic.value.trim() ? "konuyu biliyor, " : "") + "önceki anlatımı hatırlamıyor.");
+    else addLog("sys", "Oturum başladı" + (els.topic.value.trim() ? ": " + els.topic.value.trim() : "") + ".");
     try { if (navigator.wakeLock) wakeLock = await navigator.wakeLock.request("screen"); } catch {}
   }
   function stop(fromError) {
@@ -1000,16 +1091,20 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     if (session.ws) { try { session.ws.onclose = null; session.ws.close(1000); } catch {} }
     session.ws = null;
     abortTurn(false); stopMic(); resetGate();
-    els.start.disabled = false; els.start.textContent = "Anlatmaya başla"; els.start.classList.remove("stop");
+    if (was && !fromError) addLog("sys", "Durduruldu (" + elapsed() + ").");
+    if (session.startedAt) { lecture.baseMs = lectureMs(); session.startedAt = 0; }   // süre derste kalır
+    lecture.dirty = true; saveLecture();
+    els.start.disabled = false; els.start.classList.remove("stop"); idleButtons();
     els.pause.disabled = els.check.disabled = els.done.disabled = true; els.pause.textContent = "Duraklat";
     els.liveLine.textContent = "";
+    els.clock.textContent = elapsed();
     els.orb.style.setProperty("--mic", 0); els.orb.style.setProperty("--out", 0);
-    if (!fromError) setState("idle", "Durdu", notes.length ? "Notlarınız sağda duruyor." : "Tekrar başlamak için düğmeye basın.");
+    if (!fromError) setState("idle", "Durdu", hasLecture() ? "Kaydedildi. Sayfayı kapatsanız da kaldığınız yerden devam edebilirsiniz." : "Tekrar başlamak için düğmeye basın.");
     else setState("idle", "Durdu", "Sorunu giderip tekrar başlatabilirsiniz.");
-    if (was && !fromError) addLog("sys", "Oturum bitti (" + elapsed() + ").");
     try { wakeLock && wakeLock.release(); } catch {} wakeLock = null;
   }
-  els.start.onclick = () => { if (session.running) stop(false); else start(); };
+  els.start.onclick = () => { if (session.running) stop(false); else start(false); };
+  els.newBtn.onclick = () => { if (!session.running) start(true); };
   els.pause.onclick = () => {
     if (!session.running) return;
     session.paused = !session.paused;
@@ -1020,10 +1115,19 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
   };
   els.check.onclick = () => { if (session.paused) els.pause.onclick(); sendText(CHECK_TEXT); };
   els.done.onclick = () => { if (session.paused) els.pause.onclick(); sendText(DONE_TEXT); };
-  window.addEventListener("beforeunload", () => { if (session.ws) try { session.ws.close(1000); } catch {} });
+  // Sayfa kapanırken bağlantıyı kapat; kapanış "koptu, yeniden bağlan" sanılıp boşuna yeni oturum açılmasın
+  window.addEventListener("beforeunload", () => { saveLecture(); if (session.ws) try { session.ws.onclose = null; session.ws.close(1000); } catch {} });
+  // Tablette sayfadan çıkarken (başka uygulamaya geçme, sekmeyi kapatma, ekran kilidi) son durumu hemen kaydet
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") saveLecture(); });
+  window.addEventListener("pagehide", () => saveLecture());
+
+  // Açılışta kayıtlı ders varsa geri getir
+  restoreLecture();
+  idleButtons();
+  if (hasLecture()) setState("idle", "Kaldığınız yer hazır", resumeHint());
 
   // Test kancası (yalnızca ?ws= ile açıldığında)
-  if (WS_OVERRIDE) window.__tus = { session, notes, log, cfg, audio, gate, barge };
+  if (WS_OVERRIDE) window.__tus = { session, notes, log, cfg, audio, gate, barge, lecture };
 })();
 </script>
 </body>
