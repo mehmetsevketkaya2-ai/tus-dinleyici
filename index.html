@@ -1,0 +1,917 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TUS Dinleyici</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600&family=Figtree:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Düzen: sakin bir çalışma masası. Solda sizi dinleyen arkadaş, sağda kitap kenarına düşülmüş notlar gibi onun uyarıları.
+   Renkler H&E boyasından: hematoksilen moru dinlerken, eozin pembesi konuşurken. */
+:root {
+  --paper: #f6f5fa;
+  --card: #ffffff;
+  --ink: #1f1b2e;
+  --muted: #676280;
+  --line: #e3e0ed;
+  --hema: #4a3d8f;
+  --hema-soft: #ebe8f7;
+  --eosin: #c93a6d;
+  --eosin-soft: #fbe6ee;
+  --ok: #2d7a57;
+  --warn: #9a6512;
+  --err: #b8322a;
+  --err-soft: #fbe9e7;
+  --display: "Literata", Georgia, "Times New Roman", serif;
+  --body: "Figtree", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --radius: 14px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #14121c; --card: #1c1927; --ink: #ece9f5; --muted: #a39eb9; --line: #2d2940;
+    --hema: #a89af0; --hema-soft: #262143; --eosin: #f07aa4; --eosin-soft: #3a1c2b;
+    --ok: #5cc596; --warn: #e3b45a; --err: #f07b6e; --err-soft: #3b1d1b;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #14121c; --card: #1c1927; --ink: #ece9f5; --muted: #a39eb9; --line: #2d2940;
+  --hema: #a89af0; --hema-soft: #262143; --eosin: #f07aa4; --eosin-soft: #3a1c2b;
+  --ok: #5cc596; --warn: #e3b45a; --err: #f07b6e; --err-soft: #3b1d1b;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font: 16px/1.55 var(--body);
+  padding-inline: 16px;
+  padding-block: 20px 40px;
+}
+.wrap { max-width: 1080px; margin: 0 auto; display: grid; gap: 20px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; }
+h1 { font: 600 1.75rem/1.2 var(--display); margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+h1 small { display: block; font: 400 0.95rem/1.4 var(--body); color: var(--muted); letter-spacing: 0; margin-top: 2px; }
+.clock { font: 500 1.1rem var(--mono); font-variant-numeric: tabular-nums; color: var(--muted); }
+h2 { font: 600 1.15rem/1.3 var(--display); margin: 0; }
+.eyebrow { font: 600 0.72rem var(--body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+
+main { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 20px; align-items: start; }
+@media (max-width: 860px) { main { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; min-width: 0; }
+
+/* Dinleyici */
+.listener { display: grid; justify-items: center; gap: 18px; text-align: center; }
+.orb { --mic: 0; --out: 0; position: relative; width: min(220px, 60vw); aspect-ratio: 1; max-width: 100%; display: grid; place-items: center; }
+.orb .ring, .orb .core { position: absolute; border-radius: 50%; }
+.orb .ring { inset: 0; border: 2px solid var(--hema); opacity: calc(0.18 + var(--mic) * 0.8); transform: scale(calc(0.86 + var(--mic) * 0.14)); transition: opacity 90ms linear, transform 90ms linear, border-color 300ms; }
+.orb .ring.r2 { inset: 9%; opacity: calc(0.12 + var(--mic) * 0.5); transform: scale(calc(0.92 + var(--mic) * 0.08)); }
+.orb .core { inset: 24%; background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--hema) 55%, white), var(--hema)); box-shadow: 0 10px 40px -12px var(--hema); transform: scale(calc(1 + var(--out) * 0.16)); transition: background 400ms, box-shadow 400ms, transform 80ms linear; }
+.orb.speaking .core { background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--eosin) 55%, white), var(--eosin)); box-shadow: 0 10px 44px -10px var(--eosin); }
+.orb.speaking .ring { border-color: var(--eosin); }
+.orb.idle .core, .orb.paused .core { background: var(--line); box-shadow: none; }
+.orb.idle .ring, .orb.paused .ring { border-color: var(--line); }
+.orb.live .core { animation: breathe 5.5s ease-in-out infinite; }
+@keyframes breathe { 0%, 100% { scale: 1; } 50% { scale: 1.045; } }
+@media (prefers-reduced-motion: reduce) { .orb.live .core { animation: none; } .orb .ring, .orb .core { transition: none; } }
+
+.state { display: grid; gap: 4px; min-height: 3.2em; }
+.state strong { font: 600 1.2rem/1.3 var(--display); }
+.state span { color: var(--muted); font-size: 0.93rem; }
+
+.silence { width: min(320px, 100%); display: grid; gap: 6px; }
+.silence .bar { height: 6px; border-radius: 3px; background: var(--hema-soft); overflow: hidden; }
+.silence .bar i { display: block; height: 100%; width: 0%; background: var(--hema); border-radius: 3px; }
+.silence .lbl { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+button { font: 600 0.95rem var(--body); border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--ink); padding: 10px 18px; cursor: pointer; }
+button:hover:not(:disabled) { border-color: var(--hema); }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible, a:focus-visible { outline: 3px solid color-mix(in srgb, var(--hema) 55%, transparent); outline-offset: 2px; }
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+button.primary { background: var(--hema); border-color: var(--hema); color: var(--card); padding: 13px 28px; font-size: 1.02rem; }
+button.primary.stop { background: var(--card); color: var(--ink); border-color: var(--ink); }
+button.small { padding: 6px 12px; font-size: 0.85rem; }
+
+.topic { width: 100%; display: grid; gap: 6px; text-align: left; }
+label { font-size: 0.88rem; font-weight: 600; }
+input[type="text"], input[type="password"], select, textarea {
+  width: 100%; font: 400 0.95rem var(--body); color: var(--ink); background: var(--paper);
+  border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+}
+textarea { font-size: 0.88rem; line-height: 1.5; min-height: 220px; resize: vertical; }
+.hint { font-size: 0.84rem; color: var(--muted); }
+
+.alert { border-radius: 10px; padding: 12px 14px; font-size: 0.92rem; background: var(--err-soft); color: var(--ink); border: 1px solid color-mix(in srgb, var(--err) 35%, transparent); text-align: left; width: 100%; }
+.alert b { color: var(--err); }
+
+/* Notlar */
+.notes { display: grid; gap: 14px; }
+.notes-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; }
+.notes ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.notes li { display: grid; grid-template-columns: 3.4em minmax(0, 1fr); gap: 10px; align-items: baseline; padding: 10px 12px; border-radius: 10px; background: var(--eosin-soft); }
+.notes li time { font: 500 0.78rem var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.notes li p { margin: 0; font: 400 1rem/1.5 var(--display); }
+.empty { color: var(--muted); font-size: 0.93rem; padding: 6px 0; }
+details.log summary { cursor: pointer; font-weight: 600; font-size: 0.92rem; }
+.transcript { margin-top: 10px; max-height: 280px; overflow-y: auto; display: grid; gap: 8px; font-size: 0.9rem; }
+.transcript div { min-width: 0; overflow-wrap: anywhere; }
+.transcript .who { font-weight: 600; margin-right: 6px; }
+.transcript .me .who { color: var(--hema); }
+.transcript .pal .who { color: var(--eosin); }
+.transcript .sys { color: var(--muted); font-style: italic; }
+.live-line { color: var(--muted); font-style: italic; min-height: 1.4em; overflow-wrap: anywhere; }
+
+/* Ayarlar */
+details.settings > summary { cursor: pointer; font: 600 1.05rem var(--display); list-style: none; display: flex; align-items: center; gap: 10px; }
+details.settings > summary::-webkit-details-marker { display: none; }
+details.settings > summary::before { content: "+"; font: 500 1.1rem var(--mono); color: var(--muted); width: 1em; }
+details.settings[open] > summary::before { content: "–"; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; margin-top: 18px; }
+.field { display: grid; gap: 6px; align-content: start; min-width: 0; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.seg { display: grid; gap: 6px; }
+.seg button { border-radius: 10px; padding: 9px 12px; font-weight: 500; text-align: left; display: grid; gap: 2px; }
+.seg button small { font-weight: 400; font-size: 0.8rem; color: var(--muted); }
+.seg button[aria-pressed="true"] { border-color: var(--hema); background: var(--hema-soft); box-shadow: inset 3px 0 0 var(--hema); }
+input[type="range"] { width: 100%; accent-color: var(--hema); }
+.val { font: 500 0.95rem var(--mono); font-variant-numeric: tabular-nums; }
+.keybox { border: 1px dashed var(--hema); border-radius: 12px; padding: 16px; display: grid; gap: 10px; background: var(--hema-soft); }
+.keybox ol { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; font-size: 0.93rem; }
+a { color: var(--hema); }
+.ok { color: var(--ok); font-weight: 600; }
+.tips { font-size: 0.86rem; color: var(--muted); display: grid; gap: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>TUS Dinleyici <small>Siz anlatın, o dinlesin. Yalnızca önemli bir eksik ya da yanlış olduğunda konuşur.</small></h1>
+    <div class="clock" id="clock" aria-label="Anlatım süresi">00:00</div>
+  </header>
+
+  <main>
+    <section class="panel listener" aria-label="Dinleyici">
+      <div class="orb idle" id="orb" aria-hidden="true"><div class="ring"></div><div class="ring r2"></div><div class="core"></div></div>
+      <div class="state" aria-live="polite">
+        <strong id="stateTitle">Hazır</strong>
+        <span id="stateSub">Başlamak için düğmeye basın, sonra anlatmaya başlayın.</span>
+      </div>
+      <div class="silence" id="silenceBox" hidden>
+        <div class="bar"><i id="silenceBar"></i></div>
+        <div class="lbl"><span>Sessizlik</span><span id="silenceVal">0,0 / 4,0 sn</span></div>
+      </div>
+      <div id="alert" class="alert" role="alert" hidden></div>
+      <div class="controls">
+        <button class="primary" id="startBtn" type="button">Anlatmaya başla</button>
+      </div>
+      <div class="controls">
+        <button id="pauseBtn" type="button" disabled>Duraklat</button>
+        <button id="checkBtn" type="button" disabled title="Şu ana kadar anlattıklarınızda kritik bir eksik ya da yanlış var mı, sorar">Eksik var mı?</button>
+        <button id="doneBtn" type="button" disabled title="Anlatımı bitirir ve atladığınız önemli noktaları ister">Bitti, eksikleri söyle</button>
+      </div>
+      <div class="topic">
+        <label for="topic">Bugünkü konu <span class="hint">(isteğe bağlı)</span></label>
+        <input type="text" id="topic" placeholder="ör. Sindirim — gastrointestinal hormonlar" autocomplete="off">
+        <span class="hint">Konuyu yazarsanız neyin kritik olduğunu daha iyi ayırt eder. Değişiklik bir sonraki başlatmada geçerli olur.</span>
+      </div>
+    </section>
+
+    <section class="panel notes" aria-label="Notlar">
+      <div class="notes-head">
+        <div><div class="eyebrow">Dinleyicinin uyarıları</div><h2>Notlar</h2></div>
+        <div class="row">
+          <button class="small" id="copyBtn" type="button">Notları kopyala</button>
+          <button class="small" id="clearBtn" type="button">Temizle</button>
+        </div>
+      </div>
+      <ol id="notes" aria-live="polite"></ol>
+      <p class="empty" id="notesEmpty">Dinleyici bir eksik ya da yanlış yakaladığında burada kısa bir not olarak kalır. Anlatım bitince bu listeyi gözden geçirebilirsiniz.</p>
+      <details class="log">
+        <summary>Konuşma dökümü</summary>
+        <div class="live-line" id="liveLine"></div>
+        <div class="transcript" id="transcript"></div>
+      </details>
+    </section>
+  </main>
+
+  <section class="panel">
+    <details class="settings" id="settings">
+      <summary>Ayarlar</summary>
+      <div class="grid2">
+        <div class="field">
+          <label for="apiKey">Gemini API anahtarı</label>
+          <div class="keybox" id="keyHelp">
+            <ol>
+              <li><a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> sayfasını açın.</li>
+              <li><b>Create API key</b> düğmesine basın ve anahtarı kopyalayın.</li>
+              <li>Aşağıya yapıştırıp <b>Kaydet</b>'e basın.</li>
+            </ol>
+          </div>
+          <input type="password" id="apiKey" placeholder="AIza…" autocomplete="off" spellcheck="false">
+          <div class="row">
+            <button class="small" id="saveKey" type="button">Kaydet</button>
+            <button class="small" id="showKey" type="button">Göster</button>
+            <button class="small" id="forgetKey" type="button">Anahtarı sil</button>
+            <span id="keyStatus" class="hint"></span>
+          </div>
+          <span class="hint">Anahtar yalnızca bu bilgisayarda, bu tarayıcıda saklanır. Konuşmanız doğrudan Google'a gider. Ücretsiz sürümde Google konuşmaları ürünlerini geliştirmek için kullanabilir.</span>
+        </div>
+
+        <div class="field">
+          <label for="silence">Sustuğunuzda kaç saniye beklesin?</label>
+          <input type="range" id="silence" min="2" max="10" step="0.5" value="4">
+          <div class="row"><span class="val" id="silenceOut">4,0 sn</span><span class="hint">Bu kadar süre susmadan söz almaz. Sık bölünüyorsanız artırın.</span></div>
+
+          <label style="margin-top:10px">Dinleyici tarzı</label>
+          <div class="seg" role="group" aria-label="Dinleyici tarzı">
+            <button type="button" data-style="quiet" aria-pressed="true">Sadece gerekince konuşur<small>Eksik ya da yanlış yoksa sessiz kalır.</small></button>
+            <button type="button" data-style="nod" aria-pressed="false">Ara ara "hı hı" der<small>Duraksadıkça kısa bir onay verir.</small></button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="voice">Ses</label>
+          <select id="voice">
+            <option value="Kore">Kore — net, kadın</option>
+            <option value="Aoede">Aoede — rahat, kadın</option>
+            <option value="Leda">Leda — genç, kadın</option>
+            <option value="Charon">Charon — bilgilendirici, erkek</option>
+            <option value="Orus">Orus — kararlı, erkek</option>
+            <option value="Puck">Puck — neşeli, erkek</option>
+          </select>
+          <label for="model" style="margin-top:10px">Model</label>
+          <select id="model">
+            <option value="gemini-3.8-live">Gemini 3.8 Live (önerilen)</option>
+            <option value="gemini-3.8-live-extended-thinking">Gemini 3.8 Live Extended Thinking (daha dikkatli, biraz yavaş)</option>
+            <option value="gemini-3.1-flash-live-preview">Gemini 3.1 Flash Live (eski)</option>
+            <option value="gemini-2.5-flash-native-audio-preview-12-2025">Gemini 2.5 Flash Native Audio (eski)</option>
+          </select>
+          <span class="hint">Ayar değişiklikleri bir sonraki başlatmada geçerli olur.</span>
+        </div>
+      </div>
+
+      <details style="margin-top:18px">
+        <summary style="cursor:pointer;font-weight:600">Dinleyicinin talimatını düzenle</summary>
+        <div class="field" style="margin-top:10px">
+          <textarea id="prompt" spellcheck="false" aria-label="Talimat"></textarea>
+          <div class="row"><button class="small" id="resetPrompt" type="button">Varsayılana dön</button><span class="hint" id="promptStatus"></span></div>
+        </div>
+      </details>
+
+      <div class="tips" style="margin-top:18px">
+        <span><b>Kulaklık kullanın.</b> Hoparlörden çıkan ses mikrofona geri dönerse dinleyici kendi sesini sizin sözünüz sanabilir.</span>
+        <span>Mikrofon izni sorulursa <b>İzin ver</b>'e basın. Sayfayı Chrome ya da Edge ile açın.</span>
+      </div>
+    </details>
+  </section>
+</div>
+
+<script>
+"use strict";
+(() => {
+  // ---------- Sabitler ----------
+  const LIVE_URL = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent";
+  const IN_RATE = 16000;          // Gemini'ye giden ses: 16 kHz, 16 bit, mono
+  const OUT_RATE = 24000;         // Gemini'den gelen ses: 24 kHz
+  const CHUNK = 1024;             // 64 ms'lik parçalar
+  const MAX_LEVEL = 6;            // kurulum sadeleştirme basamakları
+  const SPEECH_RMS = 0.012;       // yerel sessizlik göstergesi eşiği
+
+  const PROMPTS = {
+    quiet: `Sen bir TUS (Tıpta Uzmanlık Sınavı) adayının çalışma arkadaşısın. Aday sana sesli olarak konu anlatıyor. Sen karşısında oturan, dikkatle dinleyen, tıp bilgisi güçlü bir arkadaşsın.
+
+En önemli kural: Adayın sözünü kesme ve gereksiz yere konuşma. Aday düşünmek için duraksayabilir; bu senin konuşma sıran geldiği anlamına gelmez.
+
+Aday anlatmaya devam ediyorsa, cümlesi yarım kaldıysa, bir şeyi hatırlamaya çalışıyorsa ya da anlattıkları doğruysa hiçbir şey söyleme. Mutlaka ses çıkarman gerekiyorsa yalnızca "hı hı" de.
+
+Yalnızca şu durumlarda konuş:
+1. Tıbben yanlış bir bilgi söylediğinde (yanlış hormon, yanlış hücre, ters etki, yanlış sayı gibi).
+2. TUS'ta sık sorulan kritik bir noktayı atlayıp başka konuya geçtiğinde.
+3. Sana doğrudan bir soru sorduğunda.
+Bu durumlarda en fazla iki kısa cümle söyle, ardından "devam et" de ve sus. Doğru anlatılanı tekrar etme, özet yapma, övme, soru sorma.
+
+Aday "bitti" dediğinde ya da senden eksikleri istediğinde, anlatımda atlanan en önemli noktaları en fazla beş kısa madde olarak söyle.
+
+Aday "sus" ya da "sessiz ol" derse hemen sessiz dinlemeye dön.
+
+Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin. Kısa ve net ol.`,
+    nod: `Sen bir TUS (Tıpta Uzmanlık Sınavı) adayının çalışma arkadaşısın. Aday sana sesli olarak konu anlatıyor. Sen karşısında oturan, dikkatle dinleyen, tıp bilgisi güçlü bir arkadaşsın.
+
+En önemli kural: Adayın sözünü kesme ve gereksiz yere konuşma. Aday düşünmek için duraksayabilir.
+
+Aday duraksadığında, kritik bir şey yoksa yalnızca tek kelimelik bir dinleyici tepkisi ver: "hı hı", "evet", "tamam" ya da "devam". Başka bir şey söyleme.
+
+Yalnızca şu durumlarda daha fazla konuş:
+1. Tıbben yanlış bir bilgi söylediğinde (yanlış hormon, yanlış hücre, ters etki, yanlış sayı gibi).
+2. TUS'ta sık sorulan kritik bir noktayı atlayıp başka konuya geçtiğinde.
+3. Sana doğrudan bir soru sorduğunda.
+Bu durumlarda en fazla iki kısa cümle söyle, ardından "devam et" de ve sus. Doğru anlatılanı tekrar etme, özet yapma, övme, soru sorma.
+
+Aday "bitti" dediğinde ya da senden eksikleri istediğinde, anlatımda atlanan en önemli noktaları en fazla beş kısa madde olarak söyle.
+
+Aday "sus" ya da "sessiz ol" derse hemen sessiz dinlemeye dön.
+
+Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin. Kısa ve net ol.`
+  };
+  const CHECK_TEXT = "Şu ana kadar anlattıklarımda kritik bir yanlış ya da TUS için önemli bir eksik var mı? Varsa en fazla iki kısa cümleyle söyle, yoksa sadece \"devam\" de.";
+  const DONE_TEXT = "Anlatımım bitti. Atladığım en önemli noktaları en fazla beş kısa madde olarak söyle.";
+  const TRIVIAL_WORDS = new Set(["hı", "hıhı", "hı-hı", "hıı", "hi", "hihi", "hı-ı", "mhm", "hmm", "hm", "evet", "tamam", "devam", "et", "edebilirsin", "ediyorum", "anladım", "peki", "okey", "ok", "dinliyorum", "güzel", "olur", "iyi"]);
+  function isTrivial(text) {
+    const words = text.toLocaleLowerCase("tr").replace(/[^\p{L}\s-]/gu, " ").split(/\s+/).filter(Boolean);
+    if (!words.length) return true;
+    if (words.length > 5) return false;
+    return words.every(w => TRIVIAL_WORDS.has(w) || /^h[ıi]+(-?h?[ıi]+)*m*$/.test(w) || /^m+h*m+$/.test(w));
+  }
+
+  // ---------- Kısayollar ----------
+  const $ = (id) => document.getElementById(id);
+  const params = new URLSearchParams(location.search);
+  const WS_OVERRIDE = /^ws:\/\/(127\.0\.0\.1|localhost)(:\d+)?\//.test(params.get("ws") || "") ? params.get("ws") : null; // yalnızca yerel test için
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem("tusd." + k); return v === null ? d : v; } catch { return d; } },
+    set(k, v) { try { localStorage.setItem("tusd." + k, v); } catch {} },
+    del(k) { try { localStorage.removeItem("tusd." + k); } catch {} }
+  };
+  const fmtSec = (s) => s.toFixed(1).replace(".", ",");
+  const fmtClock = (ms) => { const t = Math.max(0, Math.floor(ms / 1000)); const h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), s = t % 60; return (h ? h + ":" + String(m).padStart(2, "0") : String(m).padStart(2, "0")) + ":" + String(s).padStart(2, "0"); };
+
+  // ---------- Ayarlar ----------
+  const els = {
+    orb: $("orb"), title: $("stateTitle"), sub: $("stateSub"), alert: $("alert"),
+    start: $("startBtn"), pause: $("pauseBtn"), check: $("checkBtn"), done: $("doneBtn"),
+    topic: $("topic"), notes: $("notes"), notesEmpty: $("notesEmpty"), transcript: $("transcript"), liveLine: $("liveLine"),
+    silenceBox: $("silenceBox"), silenceBar: $("silenceBar"), silenceVal: $("silenceVal"), clock: $("clock"),
+    apiKey: $("apiKey"), keyStatus: $("keyStatus"), settings: $("settings"), silence: $("silence"), silenceOut: $("silenceOut"),
+    voice: $("voice"), model: $("model"), prompt: $("prompt"), promptStatus: $("promptStatus")
+  };
+  const cfg = {
+    key: store.get("key", ""),
+    silence: parseFloat(store.get("silence", "4")) || 4,
+    style: store.get("style", "quiet"),
+    voice: store.get("voice", "Kore"),
+    model: store.get("model", "gemini-3.8-live"),
+    topic: store.get("topic", ""),
+    customPrompt: store.get("prompt", "")
+  };
+  if (!PROMPTS[cfg.style]) cfg.style = "quiet";
+
+  function renderSettings() {
+    els.apiKey.value = cfg.key;
+    els.keyStatus.textContent = cfg.key ? "Kayıtlı" : "";
+    els.keyStatus.className = cfg.key ? "ok" : "hint";
+    els.silence.value = String(cfg.silence);
+    els.silenceOut.textContent = fmtSec(cfg.silence) + " sn";
+    els.voice.value = cfg.voice;
+    if (els.voice.value !== cfg.voice) els.voice.value = "Kore";
+    els.model.value = cfg.model;
+    if (els.model.value !== cfg.model) els.model.value = "gemini-3.8-live";
+    els.topic.value = cfg.topic;
+    document.querySelectorAll(".seg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.style === cfg.style)));
+    els.prompt.value = cfg.customPrompt || PROMPTS[cfg.style];
+    els.promptStatus.textContent = cfg.customPrompt ? "Düzenlenmiş talimat kullanılıyor." : "";
+    $("keyHelp").hidden = !!cfg.key;
+  }
+  renderSettings();
+  if (!cfg.key) els.settings.open = true;
+
+  $("saveKey").onclick = () => {
+    const v = els.apiKey.value.trim();
+    if (!v) { els.keyStatus.textContent = "Önce anahtarı yapıştırın."; els.keyStatus.className = "hint"; return; }
+    cfg.key = v; store.set("key", v); renderSettings();
+    if (!/^AIza/.test(v)) { els.keyStatus.textContent = "Kaydedildi. Anahtarlar genelde AIza ile başlar; tam kopyaladığınızdan emin olun."; els.keyStatus.className = "hint"; }
+    hideAlert();
+  };
+  $("showKey").onclick = (e) => { const shown = els.apiKey.type === "text"; els.apiKey.type = shown ? "password" : "text"; e.target.textContent = shown ? "Göster" : "Gizle"; };
+  $("forgetKey").onclick = () => { cfg.key = ""; store.del("key"); els.apiKey.value = ""; renderSettings(); };
+  els.silence.oninput = () => { cfg.silence = parseFloat(els.silence.value); store.set("silence", String(cfg.silence)); els.silenceOut.textContent = fmtSec(cfg.silence) + " sn"; };
+  els.voice.onchange = () => { cfg.voice = els.voice.value; store.set("voice", cfg.voice); };
+  els.model.onchange = () => { cfg.model = els.model.value; store.set("model", cfg.model); };
+  els.topic.onchange = () => { cfg.topic = els.topic.value.trim(); store.set("topic", cfg.topic); };
+  document.querySelectorAll(".seg button").forEach(b => b.onclick = () => {
+    cfg.style = b.dataset.style; store.set("style", cfg.style);
+    if (!cfg.customPrompt) els.prompt.value = PROMPTS[cfg.style];
+    renderSettings();
+  });
+  els.prompt.onchange = () => {
+    const v = els.prompt.value.trim();
+    if (!v || v === PROMPTS[cfg.style].trim()) { cfg.customPrompt = ""; store.del("prompt"); }
+    else { cfg.customPrompt = v; store.set("prompt", v); }
+    renderSettings();
+  };
+  $("resetPrompt").onclick = () => { cfg.customPrompt = ""; store.del("prompt"); renderSettings(); };
+
+  function instruction() {
+    const base = cfg.customPrompt || PROMPTS[cfg.style];
+    const topic = els.topic.value.trim();
+    return topic ? base + "\n\nBugünkü konu: " + topic + "." : base;
+  }
+
+  // ---------- Arayüz durumu ----------
+  function setState(kind, title, sub) {
+    els.orb.className = "orb " + kind;
+    els.title.textContent = title;
+    els.sub.textContent = sub || "";
+  }
+  function showAlert(html) { els.alert.innerHTML = html; els.alert.hidden = false; }
+  function hideAlert() { els.alert.hidden = true; els.alert.textContent = ""; }
+  function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+
+  // ---------- Notlar ve döküm ----------
+  const notes = [];
+  const log = [];
+  let curMe = null, curPal = null;
+  function elapsed() { return session.startedAt ? fmtClock(Date.now() - session.startedAt) : "00:00"; }
+  function renderNotes() {
+    els.notes.innerHTML = "";
+    notes.forEach(n => {
+      const li = document.createElement("li");
+      const t = document.createElement("time"); t.textContent = n.at;
+      const p = document.createElement("p"); p.textContent = n.text;
+      li.append(t, p); els.notes.append(li);
+    });
+    els.notesEmpty.hidden = notes.length > 0;
+  }
+  function addNote(text) { notes.push({ at: elapsed(), text }); renderNotes(); }
+  function addLog(who, text) {
+    const entry = { who, text, at: elapsed() };
+    log.push(entry);
+    const div = document.createElement("div");
+    div.className = who === "me" ? "me" : who === "pal" ? "pal" : "sys";
+    if (who === "sys") div.textContent = text;
+    else { const w = document.createElement("span"); w.className = "who"; w.textContent = who === "me" ? "Siz:" : "Dinleyici:"; const s = document.createElement("span"); s.textContent = text; div.append(w, s); }
+    entry.el = div;
+    els.transcript.append(div);
+    if (els.transcript.children.length > 400) els.transcript.firstChild.remove();
+    els.transcript.scrollTop = els.transcript.scrollHeight;
+    return entry;
+  }
+  function appendTo(entry, frag) {
+    entry.text += frag;
+    entry.el.lastChild.textContent = entry.text;
+    els.transcript.scrollTop = els.transcript.scrollHeight;
+  }
+  $("copyBtn").onclick = async () => {
+    const lines = ["TUS Dinleyici — notlar" + (els.topic.value.trim() ? " (" + els.topic.value.trim() + ")" : "")];
+    notes.forEach(n => lines.push(n.at + "  " + n.text));
+    if (log.length) { lines.push("", "Döküm:"); log.forEach(l => lines.push((l.who === "me" ? "Siz: " : l.who === "pal" ? "Dinleyici: " : "— ") + l.text.trim())); }
+    const text = lines.join("\n");
+    try { await navigator.clipboard.writeText(text); $("copyBtn").textContent = "Kopyalandı"; }
+    catch { const ta = document.createElement("textarea"); ta.value = text; document.body.append(ta); ta.select(); try { document.execCommand("copy"); $("copyBtn").textContent = "Kopyalandı"; } catch {} ta.remove(); }
+    setTimeout(() => $("copyBtn").textContent = "Notları kopyala", 1800);
+  };
+  $("clearBtn").onclick = () => { notes.length = 0; log.length = 0; els.transcript.innerHTML = ""; renderNotes(); };
+  renderNotes();
+
+  // ---------- Ses ----------
+  const audio = { ctx: null, stream: null, src: null, tap: null, micAn: null, outGain: null, outAn: null, nextT: 0, playing: new Set(), down: null, pending: [] };
+
+  function makeDownsampler(inRate) {
+    const ratio = inRate / IN_RATE;
+    let acc = 0, cnt = 0, t = 0;
+    return (f32) => {
+      const out = [];
+      for (let i = 0; i < f32.length; i++) {
+        acc += f32[i]; cnt++; t += 1;
+        if (t >= ratio) { out.push(acc / cnt); acc = 0; cnt = 0; t -= ratio; }
+      }
+      return out;
+    };
+  }
+  function toB64(i16) {
+    const u8 = new Uint8Array(i16.buffer, i16.byteOffset, i16.byteLength);
+    let s = "";
+    for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));
+    return btoa(s);
+  }
+  function onFrames(f32) {
+    if (!session.running) return;
+    const ds = audio.down(f32);
+    for (const v of ds) {
+      audio.pending.push(v);
+      if (audio.pending.length >= CHUNK) {
+        const i16 = new Int16Array(CHUNK);
+        for (let j = 0; j < CHUNK; j++) { const x = Math.max(-1, Math.min(1, audio.pending[j])); i16[j] = x < 0 ? x * 0x8000 : x * 0x7fff; }
+        audio.pending = audio.pending.slice(CHUNK);
+        sendAudio(toB64(i16));
+      }
+    }
+  }
+  async function startMic() {
+    audio.stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+    if (!audio.ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      audio.ctx = new AC();
+      audio.outGain = audio.ctx.createGain();
+      audio.outAn = audio.ctx.createAnalyser(); audio.outAn.fftSize = 1024;
+      audio.outGain.connect(audio.outAn); audio.outAn.connect(audio.ctx.destination);
+    }
+    await audio.ctx.resume();
+    audio.down = makeDownsampler(audio.ctx.sampleRate);
+    audio.pending = [];
+    audio.src = audio.ctx.createMediaStreamSource(audio.stream);
+    audio.micAn = audio.ctx.createAnalyser(); audio.micAn.fftSize = 1024;
+    audio.src.connect(audio.micAn);
+    const sink = audio.ctx.createGain(); sink.gain.value = 0; sink.connect(audio.ctx.destination);
+    let tap = null;
+    if (audio.ctx.audioWorklet && window.AudioWorkletNode) {
+      const code = "class T extends AudioWorkletProcessor{process(i){const c=i[0]&&i[0][0];if(c)this.port.postMessage(c.slice(0));return true}}registerProcessor('tus-tap',T);";
+      for (const url of [URL.createObjectURL(new Blob([code], { type: "application/javascript" })), "data:application/javascript;charset=utf-8," + encodeURIComponent(code)]) {
+        try {
+          if (!audio.workletReady) { await audio.ctx.audioWorklet.addModule(url); audio.workletReady = true; }
+          tap = new AudioWorkletNode(audio.ctx, "tus-tap");
+          tap.port.onmessage = (e) => onFrames(e.data);
+          break;
+        } catch (e) { tap = null; }
+      }
+    }
+    if (!tap) {
+      tap = audio.ctx.createScriptProcessor(4096, 1, 1);
+      tap.onaudioprocess = (e) => onFrames(e.inputBuffer.getChannelData(0).slice(0));
+    }
+    audio.src.connect(tap); tap.connect(sink);
+    audio.tap = tap; audio.sink = sink;
+  }
+  function stopMic() {
+    try { audio.src && audio.src.disconnect(); } catch {}
+    try { audio.tap && audio.tap.disconnect(); } catch {}
+    try { audio.sink && audio.sink.disconnect(); } catch {}
+    if (audio.tap && audio.tap.port) audio.tap.port.onmessage = null;
+    if (audio.stream) audio.stream.getTracks().forEach(t => t.stop());
+    audio.stream = audio.src = audio.tap = audio.sink = audio.micAn = null;
+    audio.pending = [];
+  }
+  function playChunk(b64, mime) {
+    if (!audio.ctx) return;
+    const m = /rate=(\d+)/.exec(mime || "");
+    const rate = m ? parseInt(m[1], 10) : OUT_RATE;
+    const bin = atob(b64);
+    const n = bin.length >> 1;
+    if (!n) return;
+    const buf = audio.ctx.createBuffer(1, n, rate);
+    const ch = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) { let v = bin.charCodeAt(2 * i) | (bin.charCodeAt(2 * i + 1) << 8); if (v >= 32768) v -= 65536; ch[i] = v / 32768; }
+    const s = audio.ctx.createBufferSource();
+    s.buffer = buf; s.connect(audio.outGain);
+    const t = Math.max(audio.ctx.currentTime + 0.04, audio.nextT);
+    s.start(t);
+    audio.nextT = t + buf.duration;
+    audio.playing.add(s);
+    s.onended = () => audio.playing.delete(s);
+    session.palAudioSec += buf.duration;
+  }
+  function stopPlayback() {
+    audio.playing.forEach(s => { try { s.stop(); } catch {} });
+    audio.playing.clear();
+    audio.nextT = 0;
+  }
+  function palSpeaking() { return audio.ctx && (audio.playing.size > 0 || audio.nextT > audio.ctx.currentTime); }
+
+  // ---------- Oturum ----------
+  const session = {
+    running: false, paused: false, ws: null, ready: false, handle: null, level: 0,
+    startedAt: 0, reconnecting: false, attempts: 0, goAway: false, buffer: [], palAudioSec: 0,
+    textVia: "realtime", lastTextSent: null
+  };
+
+  const workingLevel = new Map(); // model -> bu sayfa açıkken kabul edilen kurulum basamağı
+  function levelFor(model) { return workingLevel.get(model) || 0; }
+
+  // Basamaklar: 0 hepsi · 1 tam sessizlik yok · 2 Türkçe döküm ipucu yok · 3 ses seçimi yok
+  //             4 yazılı döküm yok · 5 sessizlik en fazla 3 sn, oturum devri yok · 6 en sade
+  function buildSetup(level) {
+    const s = {
+      model: "models/" + cfg.model,
+      generationConfig: { responseModalities: ["AUDIO"] },
+      systemInstruction: { parts: [{ text: instruction() }] }
+    };
+    if (level <= 2) s.generationConfig.speechConfig = { voiceConfig: { prebuiltVoiceConfig: { voiceName: cfg.voice } } };
+    if (level <= 4) s.realtimeInputConfig = { automaticActivityDetection: { endOfSpeechSensitivity: "END_SENSITIVITY_LOW", silenceDurationMs: Math.round(cfg.silence * 1000) } };
+    else if (level === 5) s.realtimeInputConfig = { automaticActivityDetection: { silenceDurationMs: Math.min(3000, Math.round(cfg.silence * 1000)) } };
+    if (level <= 3) {
+      s.inputAudioTranscription = level <= 1 ? { languageCodes: ["tr"] } : {};
+      s.outputAudioTranscription = {};
+      s.contextWindowCompression = { slidingWindow: {} };
+    }
+    if (level <= 4) s.sessionResumption = session.handle ? { handle: session.handle } : {};
+    if (level === 0 && cfg.style === "quiet") s.proactivity = { proactiveAudio: true };
+    return { setup: s };
+  }
+
+  function classify(code, reason) {
+    const r = (reason || "").toLowerCase();
+    if (/api key|api_key|key not valid|invalid key|unauthenticated|permission_denied|permission denied|forbidden/.test(r)) return "key";
+    if (/quota|resource_exhausted|exceeded|rate limit|too many requests/.test(r)) return "quota";
+    if (/location is not supported|region|country|not available in your/.test(r)) return "region";
+    if (/models\/[^\s]* is not found|not found for api version|not supported for bidigeneratecontent|unknown model|model .*not found/.test(r)) return "model";
+    if (/invalid|unknown name|cannot find field|not supported|unsupported|unrecognized|bad request/.test(r)) return "config";
+    if (code === 1007 || code === 1008) return "config"; // geçersiz alan ya da değer
+    return "network"; // 1006, 1011 ve diğerleri: geçici sorun
+  }
+  function explain(kind, reason) {
+    const raw = reason ? "<br><span class=\"hint\">Google'ın yanıtı: " + escapeHtml(reason) + "</span>" : "";
+    switch (kind) {
+      case "key": return "<b>Anahtar kabul edilmedi.</b> AI Studio'dan kopyalarken eksik kalmış olabilir. Ayarlar'dan yeniden yapıştırıp Kaydet'e basın." + raw;
+      case "quota": return "<b>Ücretsiz kullanım sınırına ulaşıldı.</b> Birkaç dakika bekleyip tekrar deneyin ya da Ayarlar'dan başka bir model seçin." + raw;
+      case "region": return "<b>Bu hizmet bulunduğunuz yerden kullanılamıyor görünüyor.</b>" + raw;
+      case "model": return "<b>Seçili model şu an kullanılamıyor.</b> Ayarlar'dan başka bir model seçip tekrar başlatın." + raw;
+      case "network": return "<b>Google'a bağlanılamadı.</b> İnternet bağlantınızı kontrol edip tekrar deneyin." + raw;
+      default: return "<b>Bağlantı kurulamadı.</b>" + raw;
+    }
+  }
+
+  function handshake(level) {
+    return new Promise((resolve, reject) => {
+      const url = WS_OVERRIDE || (LIVE_URL + "?key=" + encodeURIComponent(cfg.key));
+      let ws, done = false, opened = false;
+      try { ws = new WebSocket(url); } catch (e) { reject({ kind: "network", reason: String(e && e.message || e) }); return; }
+      ws.binaryType = "arraybuffer";
+      const timer = setTimeout(() => { if (!done) { done = true; try { ws.onclose = null; ws.close(); } catch {} reject({ kind: "network", reason: "Sunucu 12 saniye içinde yanıt vermedi." }); } }, 12000);
+      ws.onopen = () => { opened = true; ws.send(JSON.stringify(buildSetup(level))); };
+      ws.onmessage = (ev) => {
+        const msg = parse(ev.data);
+        if (!msg) return;
+        if (!done && msg.setupComplete !== undefined) { done = true; clearTimeout(timer); resolve(ws); }
+        if (done) onServer(ws, msg);
+      };
+      ws.onclose = (ev) => {
+        if (!done) { done = true; clearTimeout(timer); reject({ kind: classify(ev.code, ev.reason), code: ev.code, reason: ev.reason, opened }); }
+        else onClose(ws, ev);
+      };
+      ws.onerror = () => {};
+    });
+  }
+  function parse(data) {
+    try { return JSON.parse(typeof data === "string" ? data : new TextDecoder().decode(data)); } catch { return null; }
+  }
+
+  async function openSession() {
+    let level = session.level;
+    let lastErr = null;
+    while (level <= MAX_LEVEL) {
+      try {
+        const ws = await handshake(level);
+        session.level = level;
+        workingLevel.set(cfg.model, level);
+        return ws;
+      } catch (e) {
+        lastErr = e;
+        if (!session.running) throw { kind: "stopped" };
+        if (e.kind !== "config") throw e;
+        // Önce eski oturumu geri yüklemeden aynı ayarlarla dene; olmazsa ayarları bir basamak sadeleştir.
+        if (session.handle) { session.handle = null; session.contextLost = true; continue; }
+        level++;
+      }
+    }
+    throw lastErr || { kind: "config" };
+  }
+
+  function attach(ws) {
+    session.ws = ws; session.ready = true; session.goAway = false; session.reconnecting = false;
+    const buffered = session.buffer; session.buffer = [];
+    buffered.forEach(b64 => rawSend(ws, { realtimeInput: { audio: { data: b64, mimeType: "audio/pcm;rate=16000" } } }));
+    if (!session.levelNoted && session.level > 0) {
+      session.levelNoted = true;
+      const what = ["", "tamamen sessiz kalma özelliğini", "Türkçe döküm ipucunu", "ses seçimini", "yazılı dökümü", "yazılı dökümü", "yazılı dökümü"][session.level];
+      addLog("sys", "Bu model " + what + " desteklemiyor; o özellik olmadan bağlandı.");
+    }
+    if (session.level >= 6) showAlert("<b>Bu model sessizlik süresi ayarını kabul etmedi.</b> Varsayılan davranışla çalışıyor; sözünüzü daha sık kesebilir. Ayarlar'dan başka bir model deneyin.");
+    listeningState();
+  }
+  function rawSend(ws, obj) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj)); }
+  function sendAudio(b64) {
+    if (session.paused) return;
+    if (session.ready && session.ws && session.ws.readyState === 1) rawSend(session.ws, { realtimeInput: { audio: { data: b64, mimeType: "audio/pcm;rate=16000" } } });
+    else if (session.reconnecting) { session.buffer.push(b64); if (session.buffer.length > 160) session.buffer.shift(); }
+  }
+  function sendText(text) {
+    if (!session.ready) { if (session.reconnecting) session.retryText = text; return; }
+    rawSend(session.ws, { realtimeInput: { audioStreamEnd: true } });
+    if (session.textVia === "client") rawSend(session.ws, { clientContent: { turns: [{ role: "user", parts: [{ text }] }], turnComplete: true } });
+    else rawSend(session.ws, { realtimeInput: { text } });
+    session.lastTextSent = { text, at: Date.now() };
+    addLog("sys", text === DONE_TEXT ? "Anlatımın bittiği bildirildi." : "Eksik olup olmadığı soruldu.");
+    session.thinkingSince = Date.now();
+    setState("live", "Düşünüyor", "Birazdan cevap verecek.");
+  }
+
+  function onServer(ws, msg) {
+    if (ws !== session.ws && session.ws) { /* eski bağlantıdan gelen son mesajlar */ }
+    if (msg.sessionResumptionUpdate) {
+      const u = msg.sessionResumptionUpdate;
+      if (u.resumable !== false && u.newHandle) session.handle = u.newHandle;
+    }
+    if (msg.goAway) { session.goAway = true; scheduleRollover(); }
+    const sc = msg.serverContent;
+    if (!sc) return;
+    if (sc.interimInputTranscription && sc.interimInputTranscription.text) els.liveLine.textContent = sc.interimInputTranscription.text;
+    if (sc.inputTranscription && sc.inputTranscription.text) {
+      els.liveLine.textContent = "";
+      if (!curMe) curMe = addLog("me", "");
+      appendTo(curMe, sc.inputTranscription.text);
+    }
+    if (sc.interrupted) {
+      stopPlayback();
+      finishPalTurn(true);
+      listeningState();
+    }
+    if (sc.modelTurn && Array.isArray(sc.modelTurn.parts)) {
+      for (const p of sc.modelTurn.parts) {
+        if (p.inlineData && p.inlineData.data && /audio/.test(p.inlineData.mimeType || "audio/pcm")) {
+          if (!curPal) startPalTurn();
+          playChunk(p.inlineData.data, p.inlineData.mimeType);
+        }
+      }
+    }
+    if (sc.outputTranscription && sc.outputTranscription.text) {
+      if (!curPal) startPalTurn();
+      appendTo(curPal, sc.outputTranscription.text);
+    }
+    if (sc.turnComplete) {
+      finishPalTurn(false);
+      if (!palSpeaking()) { session.uiSpeaking = false; session.thinkingSince = 0; listeningState(); }
+    }
+  }
+  function startPalTurn() {
+    curMe = null; els.liveLine.textContent = "";
+    curPal = addLog("pal", "");
+    session.palAudioSec = 0;
+    session.uiSpeaking = true; session.thinkingSince = 0;
+    setState("speaking live", "Konuşuyor", "Söze girerseniz hemen susar.");
+  }
+  function finishPalTurn(interrupted) {
+    if (!curPal) { curMe = null; return; }
+    const text = curPal.text.trim();
+    if (!text && !interrupted && session.palAudioSec > 1.5 && session.level >= 4) addNote("(Sesli bir uyarı yaptı; bu modelde yazıya dökülemedi.)");
+    else if (text && !isTrivial(text)) {
+      const clean = text.replace(/\s+/g, " ").replace(/[\s,.;:!]*\b(devam et(ebilirsin)?|devam edebilirsin|devam)\s*[.!…]*\s*$/i, "").trim();
+      addNote((clean || text) + (interrupted ? " …" : (/[.!?…]$/.test(clean) ? "" : ".")));
+    }
+    if (!text) { curPal.el.remove(); log.splice(log.indexOf(curPal), 1); }
+    curPal = null; curMe = null;
+  }
+  function listeningState() {
+    if (!session.running) return;
+    if (session.paused) setState("paused", "Duraklatıldı", "Devam etmek için Devam et'e basın.");
+    else setState("live", "Dinliyor", fmtSec(cfg.silence) + " saniye susmadan söz almaz.");
+  }
+
+  function scheduleRollover() {
+    // Sunucu yakında kapatacak: dinleyici konuşmuyorsa hemen, konuşuyorsa bitince yeniden bağlan.
+    const tryRoll = () => {
+      if (!session.running || !session.goAway || session.ws === null) return;
+      if (palSpeaking() && Date.now() - rollStart < 6000) { setTimeout(tryRoll, 250); return; }
+      reconnect("rollover");
+    };
+    const rollStart = Date.now();
+    tryRoll();
+  }
+  function onClose(ws, ev) {
+    if (ws !== session.ws) return;
+    session.ready = false;
+    if (!session.running) return;
+    const kind = classify(ev.code, ev.reason);
+    if (kind === "key" || kind === "quota" || kind === "region" || kind === "model") { fail(kind, ev.reason); return; }
+    if (session.lastTextSent && Date.now() - session.lastTextSent.at < 3000 && /text|realtime_input|client_content/i.test(ev.reason || "")) {
+      session.textVia = session.textVia === "realtime" ? "client" : "realtime";
+      session.retryText = session.lastTextSent.text;
+    }
+    reconnect("drop", ev);
+  }
+  async function reconnect(why, ev) {
+    if (session.reconnecting) return;
+    session.reconnecting = true; session.ready = false;
+    const old = session.ws; session.ws = null;
+    if (old) { try { old.onclose = null; old.close(1000); } catch {} }
+    stopPlayback(); finishPalTurn(true);
+    if (why !== "rollover") setState("live", "Yeniden bağlanıyor", "Anlatmaya devam edebilirsiniz; bu arada söyledikleriniz bekletiliyor.");
+    session.contextLost = !session.handle;
+    for (let i = 0; i < 6 && session.running; i++) {
+      if (i > 0) await new Promise(r => setTimeout(r, Math.min(8000, 500 * 2 ** (i - 1))));
+      if (!session.running) return;
+      try {
+        const ws = await openSession();
+        if (!session.running) { try { ws.close(1000); } catch {} return; }
+        attach(ws);
+        if (session.contextLost) addLog("sys", "Bağlantı yenilendi. Dinleyici önceki anlattıklarınızı hatırlamayabilir.");
+        else if (why !== "rollover") addLog("sys", "Bağlantı yenilendi.");
+        if (session.retryText) { const t = session.retryText; session.retryText = null; sendText(t); }
+        return;
+      } catch (e) {
+        if (e.kind === "stopped") return;
+        if (e.kind !== "network" && e.kind !== "config") { fail(e.kind, e.reason); return; }
+      }
+    }
+    if (session.running) fail("network", ev && ev.reason);
+  }
+  function fail(kind, reason) {
+    showAlert(explain(kind, reason));
+    stop(true);
+    if (kind === "key" || kind === "model") els.settings.open = true;
+  }
+
+  // ---------- Döngü: seviye göstergeleri ve sessizlik çubuğu ----------
+  const tmp = new Float32Array(1024);
+  let lastT = performance.now(), silentFor = 0;
+  function rms(an) { if (!an) return 0; an.getFloatTimeDomainData(tmp); let s = 0; for (let i = 0; i < tmp.length; i++) s += tmp[i] * tmp[i]; return Math.sqrt(s / tmp.length); }
+  function frame(now) {
+    const dt = Math.min(0.25, (now - lastT) / 1000); lastT = now;
+    if (session.running) {
+      const mic = session.paused ? 0 : rms(audio.micAn);
+      const out = rms(audio.outAn);
+      els.orb.style.setProperty("--mic", Math.min(1, mic * 9).toFixed(3));
+      els.orb.style.setProperty("--out", Math.min(1, out * 7).toFixed(3));
+      if (mic > SPEECH_RMS || session.paused || palSpeaking()) silentFor = 0; else silentFor += dt;
+      const frac = Math.min(1, silentFor / cfg.silence);
+      els.silenceBar.style.width = (frac * 100).toFixed(1) + "%";
+      els.silenceVal.textContent = fmtSec(Math.min(silentFor, cfg.silence)) + " / " + fmtSec(cfg.silence) + " sn";
+      els.clock.textContent = fmtClock(Date.now() - session.startedAt);
+      if (session.uiSpeaking && !curPal && !palSpeaking()) { session.uiSpeaking = false; listeningState(); }
+      if (session.thinkingSince && Date.now() - session.thinkingSince > 15000) { session.thinkingSince = 0; listeningState(); }
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  // ---------- Düğmeler ----------
+  let wakeLock = null;
+  async function start() {
+    hideAlert();
+    if (!cfg.key && !WS_OVERRIDE) {
+      els.settings.open = true; els.apiKey.focus();
+      showAlert("<b>Önce API anahtarını girin.</b> Aşağıdaki Ayarlar bölümünde adımları bulabilirsiniz.");
+      return;
+    }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      showAlert("<b>Bu tarayıcı mikrofona erişemiyor.</b> Sayfayı Chrome ya da Edge ile açın.");
+      return;
+    }
+    cfg.topic = els.topic.value.trim(); store.set("topic", cfg.topic);
+    els.start.disabled = true;
+    setState("live", "Mikrofon açılıyor", "İzin sorulursa İzin ver'e basın.");
+    try { await startMic(); }
+    catch (e) {
+      els.start.disabled = false;
+      setState("idle", "Hazır", "Başlamak için düğmeye basın, sonra anlatmaya başlayın.");
+      showAlert(e && e.name === "NotAllowedError"
+        ? "<b>Mikrofon izni verilmedi.</b> Adres çubuğunun solundaki simgeye tıklayıp mikrofona izin verin, sonra tekrar deneyin."
+        : "<b>Mikrofon açılamadı.</b> Bilgisayara bağlı bir mikrofon olduğundan emin olun." + (e && e.message ? "<br><span class=\"hint\">" + escapeHtml(e.message) + "</span>" : ""));
+      return;
+    }
+    Object.assign(session, { running: true, paused: false, ready: false, handle: null, level: levelFor(cfg.model), startedAt: Date.now(), reconnecting: false, buffer: [], textVia: "realtime", lastTextSent: null, retryText: null, levelNoted: false, uiSpeaking: false, thinkingSince: 0, contextLost: false });
+    setState("live", "Bağlanıyor", "Birkaç saniye sürebilir.");
+    session.reconnecting = true; // bağlanırken söylenenler bekletilsin
+    try {
+      const ws = await openSession();
+      if (!session.running) { try { ws.close(1000); } catch {} return; }
+      attach(ws);
+    } catch (e) {
+      if (e.kind === "stopped") return;
+      fail(e.kind, e.reason);
+      return;
+    }
+    els.start.disabled = false; els.start.textContent = "Durdur"; els.start.classList.add("stop");
+    els.pause.disabled = els.check.disabled = els.done.disabled = false;
+    els.silenceBox.hidden = false;
+    addLog("sys", "Oturum başladı" + (els.topic.value.trim() ? ": " + els.topic.value.trim() : "") + ".");
+    try { if (navigator.wakeLock) wakeLock = await navigator.wakeLock.request("screen"); } catch {}
+  }
+  function stop(fromError) {
+    const was = session.running;
+    session.running = false; session.ready = false; session.reconnecting = false; session.buffer = [];
+    if (session.ws) { try { session.ws.onclose = null; session.ws.close(1000); } catch {} }
+    session.ws = null;
+    stopPlayback(); finishPalTurn(false); stopMic();
+    els.start.disabled = false; els.start.textContent = "Anlatmaya başla"; els.start.classList.remove("stop");
+    els.pause.disabled = els.check.disabled = els.done.disabled = true; els.pause.textContent = "Duraklat";
+    els.silenceBox.hidden = true; els.liveLine.textContent = "";
+    els.orb.style.setProperty("--mic", 0); els.orb.style.setProperty("--out", 0);
+    if (!fromError) setState("idle", "Durdu", notes.length ? "Notlarınız sağda duruyor." : "Tekrar başlamak için düğmeye basın.");
+    else setState("idle", "Durdu", "Sorunu giderip tekrar başlatabilirsiniz.");
+    if (was && !fromError) addLog("sys", "Oturum bitti (" + elapsed() + ").");
+    try { wakeLock && wakeLock.release(); } catch {} wakeLock = null;
+  }
+  els.start.onclick = () => { if (session.running) stop(false); else start(); };
+  els.pause.onclick = () => {
+    if (!session.running) return;
+    session.paused = !session.paused;
+    if (session.paused && session.ready) rawSend(session.ws, { realtimeInput: { audioStreamEnd: true } });
+    els.pause.textContent = session.paused ? "Devam et" : "Duraklat";
+    listeningState();
+  };
+  els.check.onclick = () => { if (session.paused) els.pause.onclick(); sendText(CHECK_TEXT); };
+  els.done.onclick = () => { if (session.paused) els.pause.onclick(); sendText(DONE_TEXT); };
+  window.addEventListener("beforeunload", () => { if (session.ws) try { session.ws.close(1000); } catch {} });
+
+  // Test kancası (yalnızca ?ws= ile açıldığında)
+  if (WS_OVERRIDE) window.__tus = { session, notes, log, cfg, audio };
+})();
+</script>
+</body>
+</html>
