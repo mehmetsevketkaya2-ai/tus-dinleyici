@@ -214,7 +214,7 @@ a { color: var(--hema); }
               <li>Aşağıya yapıştırıp <b>Kaydet</b>'e basın.</li>
             </ol>
           </div>
-          <input type="password" id="apiKey" placeholder="AIza…" autocomplete="off" spellcheck="false">
+          <input type="password" id="apiKey" placeholder="AQ.… ile başlayan anahtar" autocomplete="off" spellcheck="false">
           <div class="row">
             <button class="small" id="saveKey" type="button">Kaydet</button>
             <button class="small" id="showKey" type="button">Göster</button>
@@ -226,8 +226,8 @@ a { color: var(--hema); }
 
         <div class="field">
           <label for="silence">Sustuğunuzda kaç saniye beklesin?</label>
-          <input type="range" id="silence" min="2" max="10" step="0.5" value="4">
-          <div class="row"><span class="val" id="silenceOut">4,0 sn</span><span class="hint">Bu kadar süre susmadan söz almaz. Sık bölünüyorsanız artırın.</span></div>
+          <input type="range" id="silence" min="0.5" max="10" step="0.5" value="4">
+          <div class="row"><span class="val" id="silenceOut">4,0 sn</span><span class="hint">Bu kadar süre susmadan söz almaz. Kısa tutarsanız daha çabuk cevap verir ama düşünmek için durduğunuzda araya girebilir; sık bölünüyorsanız artırın.</span></div>
 
           <label style="margin-top:10px">Dinleyici tarzı</label>
           <div class="seg" role="group" aria-label="Dinleyici tarzı">
@@ -385,7 +385,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin. Kısa 
     const v = els.apiKey.value.trim();
     if (!v) { els.keyStatus.textContent = "Önce anahtarı yapıştırın."; els.keyStatus.className = "hint"; return; }
     cfg.key = v; store.set("key", v); renderSettings();
-    if (!/^AIza/.test(v)) { els.keyStatus.textContent = "Kaydedildi. Anahtarlar genelde AIza ile başlar; tam kopyaladığınızdan emin olun."; els.keyStatus.className = "hint"; }
+    if (!/^(AQ\.|AIza)/.test(v)) { els.keyStatus.textContent = "Kaydedildi. Anahtarlar AQ. ya da AIza ile başlar; tam kopyaladığınızdan emin olun."; els.keyStatus.className = "hint"; }
     hideAlert();
   };
   $("showKey").onclick = (e) => { const shown = els.apiKey.type === "text"; els.apiKey.type = shown ? "password" : "text"; e.target.textContent = shown ? "Göster" : "Gizle"; };
@@ -607,6 +607,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin. Kısa 
   function classify(code, reason) {
     const r = (reason || "").toLowerCase();
     if (/api key|api_key|key not valid|invalid key|unauthenticated|permission_denied|permission denied|forbidden/.test(r)) return "key";
+    if (/prepay|prepayment|credits|billing|payment required|402/.test(r)) return "billing";
     if (/quota|resource_exhausted|exceeded|rate limit|too many requests/.test(r)) return "quota";
     if (/location is not supported|region|country|not available in your/.test(r)) return "region";
     if (/models\/[^\s]* is not found|not found for api version|not supported for bidigeneratecontent|unknown model|model .*not found/.test(r)) return "model";
@@ -621,7 +622,8 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin. Kısa 
       case "quota": return "<b>Ücretsiz kullanım sınırına ulaşıldı.</b> Birkaç dakika bekleyip tekrar deneyin ya da Ayarlar'dan başka bir model seçin." + raw;
       case "region": return "<b>Bu hizmet bulunduğunuz yerden kullanılamıyor görünüyor.</b>" + raw;
       case "model": return "<b>Seçili model şu an kullanılamıyor.</b> Ayarlar'dan başka bir model seçip tekrar başlatın." + raw;
-      case "network": return "<b>Google'a bağlanılamadı.</b> İnternet bağlantınızı kontrol edip tekrar deneyin." + raw;
+      case "billing": return "<b>Google, bu anahtarın bağlı olduğu projede ön ödemeli kredinin bittiğini söylüyor.</b> Proje ücretli planda görünüyor. AI Studio'da faturalandırması olmayan yeni bir proje açın, o projede yeni bir anahtar oluşturup Ayarlar'a yapıştırın." + raw;
+      case "network": return reason ? "<b>Google bağlantıyı kapattı.</b> Bir süre sonra tekrar deneyin; sürerse aşağıdaki yanıtı iletin." + raw : "<b>Google'a bağlanılamadı.</b> İnternet bağlantınızı kontrol edip tekrar deneyin.";
       default: return "<b>Bağlantı kurulamadı.</b>" + raw;
     }
   }
@@ -777,7 +779,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin. Kısa 
     session.ready = false;
     if (!session.running) return;
     const kind = classify(ev.code, ev.reason);
-    if (kind === "key" || kind === "quota" || kind === "region" || kind === "model") { fail(kind, ev.reason); return; }
+    if (kind === "key" || kind === "quota" || kind === "billing" || kind === "region" || kind === "model") { fail(kind, ev.reason); return; }
     if (session.lastTextSent && Date.now() - session.lastTextSent.at < 3000 && /text|realtime_input|client_content/i.test(ev.reason || "")) {
       session.textVia = session.textVia === "realtime" ? "client" : "realtime";
       session.retryText = session.lastTextSent.text;
@@ -813,7 +815,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin. Kısa 
   function fail(kind, reason) {
     showAlert(explain(kind, reason));
     stop(true);
-    if (kind === "key" || kind === "model") els.settings.open = true;
+    if (kind === "key" || kind === "model" || kind === "billing") els.settings.open = true;
   }
 
   // ---------- Döngü: seviye göstergeleri ve sessizlik çubuğu ----------
