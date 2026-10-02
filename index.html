@@ -62,6 +62,13 @@ h1 small { display: block; font: 400 0.95rem/1.4 var(--body); color: var(--muted
 h2 { font: 600 1.15rem/1.3 var(--display); margin: 0; }
 .eyebrow { font: 600 0.72rem var(--body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
 
+/* Mod seçimi: Dinleyici (siz anlatırsınız) · Soru modu (o sorar) */
+.modes { justify-self: start; display: inline-flex; gap: 4px; padding: 4px; background: var(--card); border: 1px solid var(--line); border-radius: 999px; }
+.modes button { border: 0; background: transparent; color: var(--muted); padding: 8px 18px; }
+.modes button:hover:not(:disabled) { color: var(--ink); }
+.modes button[aria-pressed="true"] { background: var(--hema); color: var(--card); }
+.modes button:disabled { opacity: 0.6; }
+
 main { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 20px; align-items: start; }
 @media (max-width: 860px) { main { grid-template-columns: minmax(0, 1fr); } }
 .panel { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; min-width: 0; }
@@ -97,7 +104,7 @@ button.small { padding: 6px 12px; font-size: 0.85rem; }
 
 .topic { width: 100%; display: grid; gap: 6px; text-align: left; }
 label { font-size: 0.88rem; font-weight: 600; }
-input[type="text"], input[type="password"], select, textarea {
+input[type="text"], input[type="password"], input[type="number"], select, textarea {
   width: 100%; font: 400 0.95rem var(--body); color: var(--ink); background: var(--paper);
   border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
 }
@@ -125,6 +132,26 @@ details.log summary { cursor: pointer; font-weight: 600; font-size: 0.92rem; }
 .transcript .muted { opacity: 0.55; }
 .live-line { color: var(--muted); font-style: italic; min-height: 1.4em; overflow-wrap: anywhere; }
 
+/* Soru modu */
+.quiz { display: grid; gap: 14px; }
+.q-add { display: grid; gap: 10px; }
+.q-range { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.q-range input { width: 5.5em; }
+.q-add .hint { margin: 0; }
+.q-add .hint.err { color: var(--err); }
+.q-progress { margin: 0; font: 600 0.95rem var(--body); }
+.q-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; max-height: 460px; overflow-y: auto; }
+.q-list li { display: grid; grid-template-columns: 2em minmax(0, 1fr) 1.4em; gap: 10px; align-items: start; padding: 10px 12px; border-radius: 10px; background: var(--paper); border: 1px solid var(--line); }
+.q-list li.q-cur { border-color: var(--hema); }
+.q-list li.q-bad, .q-list li.q-skip { background: var(--eosin-soft); border-color: transparent; }
+.q-list li.q-vis { opacity: 0.6; }
+.q-list .n { font: 500 0.78rem var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; padding-top: 3px; }
+.q-list p { margin: 0; font: 400 0.95rem/1.45 var(--display); overflow-wrap: anywhere; }
+.q-list p.ans { margin-top: 6px; font: 400 0.86rem/1.45 var(--body); }
+.q-list .mark { font-weight: 600; text-align: center; }
+.q-list li.q-ok .mark { color: var(--ok); }
+.q-list li.q-bad .mark { color: var(--eosin); }
+
 /* Ayarlar */
 details.settings > summary { cursor: pointer; font: 600 1.05rem var(--display); list-style: none; display: flex; align-items: center; gap: 10px; }
 details.settings > summary::-webkit-details-marker { display: none; }
@@ -145,9 +172,14 @@ a { color: var(--hema); }
 <body>
 <div class="wrap">
   <header>
-    <h1>TUS Dinleyici <small>Siz anlatın, o dinlesin. Yalnızca önemli bir eksik ya da yanlış olduğunda konuşur.</small></h1>
-    <div class="clock" id="clock" aria-label="Anlatım süresi">00:00</div>
+    <h1>TUS Dinleyici <small id="tagline">Siz anlatın, o dinlesin. Yalnızca önemli bir eksik ya da yanlış olduğunda konuşur.</small></h1>
+    <div class="clock" id="clock" aria-label="Süre">00:00</div>
   </header>
+
+  <nav class="modes" aria-label="Çalışma modu">
+    <button type="button" id="modeListen" aria-pressed="true">Dinleyici</button>
+    <button type="button" id="modeQuiz" aria-pressed="false">Soru modu</button>
+  </nav>
 
   <main>
     <section class="panel listener" aria-label="Dinleyici">
@@ -160,20 +192,50 @@ a { color: var(--hema); }
       <div class="controls">
         <button class="primary" id="startBtn" type="button">Anlatmaya başla</button>
         <button id="newBtn" type="button" hidden title="Notları ve dökümü silip yeni bir derse başlar">Yeni ders</button>
+        <button id="wrongBtn" type="button" hidden title="Yalnızca yanlış yaptığınız ve geçtiğiniz soruları yeniden sorar">Yanlışları sor</button>
       </div>
       <div class="controls">
         <button id="pauseBtn" type="button" disabled>Duraklat</button>
         <button id="checkBtn" type="button" disabled title="Şu ana kadar anlattıklarınızda kritik bir eksik ya da yanlış var mı, sorar">Eksik var mı?</button>
         <button id="doneBtn" type="button" disabled title="Anlatımı bitirir ve atladığınız önemli noktaları ister">Bitti, eksikleri söyle</button>
+        <button id="repeatBtn" type="button" disabled hidden title="Sesle “tekrar” demekle aynı">Tekrar oku</button>
+        <button id="skipBtn" type="button" disabled hidden title="Sesle “geç” demekle aynı">Geç</button>
       </div>
-      <div class="topic">
+      <div class="topic" id="topicBox">
         <label for="topic">Bugünkü konu <span class="hint">(isteğe bağlı)</span></label>
         <input type="text" id="topic" placeholder="ör. Sindirim — gastrointestinal hormonlar" autocomplete="off">
         <span class="hint">Konuyu yazarsanız neyin kritik olduğunu daha iyi ayırt eder. Değişiklik bir sonraki başlatmada geçerli olur.</span>
       </div>
     </section>
 
-    <section class="panel notes" aria-label="Notlar">
+    <section class="panel quiz" id="quizPanel" aria-label="Sorular" hidden>
+      <div class="notes-head">
+        <div><div class="eyebrow">Soru bankasından</div><h2>Sorular</h2></div>
+        <div class="row">
+          <button class="small" id="qClear" type="button" title="Çıkarılan soruları ve sonuçları siler">Soruları sil</button>
+        </div>
+      </div>
+      <div class="q-add">
+        <input type="file" id="qFile" accept="application/pdf,image/*" multiple hidden>
+        <div class="row"><button id="qPick" type="button">PDF ya da fotoğraf ekle</button></div>
+        <div class="q-range" id="qRange" hidden>
+          <label for="qFrom">Sayfa</label>
+          <input type="number" id="qFrom" min="1" step="1" inputmode="numeric" aria-label="İlk sayfa">
+          <span aria-hidden="true">–</span>
+          <input type="number" id="qTo" min="1" step="1" inputmode="numeric" aria-label="Son sayfa">
+          <button id="qExtract" type="button">Soruları çıkar</button>
+        </div>
+        <p class="hint" id="qStatus">Soru bankasından bir PDF ya da sayfa fotoğrafı ekleyin. Sorular yazıya dökülür, sonra size sesli sorulur.</p>
+      </div>
+      <p class="q-progress" id="qProgress" hidden></p>
+      <ol id="qList" class="q-list" aria-label="Soru listesi"></ol>
+      <details class="log">
+        <summary>Konuşma dökümü</summary>
+        <div class="transcript" id="qTranscript"></div>
+      </details>
+    </section>
+
+    <section class="panel notes" id="notesPanel" aria-label="Notlar">
       <div class="notes-head">
         <div><div class="eyebrow">Dinleyicinin uyarıları</div><h2>Notlar</h2></div>
         <div class="row">
@@ -239,6 +301,23 @@ a { color: var(--hema); }
             <option value="gemini-2.5-flash-native-audio-preview-12-2025">Gemini 2.5 Flash Native Audio (eski)</option>
           </select>
           <span class="hint">Ayar değişiklikleri bir sonraki başlatmada geçerli olur.</span>
+        </div>
+
+        <div class="field">
+          <label for="quizKey">Soru modu için ayrı anahtar <span class="hint">(isteğe bağlı)</span></label>
+          <input type="password" id="quizKey" placeholder="Boş bırakırsanız yukarıdaki anahtar kullanılır" autocomplete="off" spellcheck="false">
+          <div class="row">
+            <button class="small" id="saveQuizKey" type="button">Kaydet</button>
+            <button class="small" id="forgetQuizKey" type="button">Sil</button>
+            <span id="quizKeyStatus" class="hint"></span>
+          </div>
+          <label for="exModel" style="margin-top:10px">Soruları yazıya döken model</label>
+          <select id="exModel">
+            <option value="gemini-3.8-flash">Gemini 3.8 Flash (önerilen)</option>
+            <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
+            <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash-Lite (daha hızlı)</option>
+          </select>
+          <span class="hint">Seçili model kullanılamazsa sayfa sıradakini kendisi dener.</span>
         </div>
       </div>
 
@@ -327,6 +406,10 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     set(k, v) { try { localStorage.setItem("tusd." + k, v); } catch {} },
     del(k) { try { localStorage.removeItem("tusd." + k); } catch {} }
   };
+  // Yerel testte Google'ın yerine konan adresler (yalnızca ?ws= ile birlikte ve yalnızca bu bilgisayara)
+  const localUrl = (v) => /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?(\/|$)/.test(v || "") ? v : null;
+  const API_BASE = (WS_OVERRIDE && localUrl(params.get("api"))) || "https://generativelanguage.googleapis.com";
+  const PDFJS_BASE = (WS_OVERRIDE && localUrl(params.get("pdfjs"))) || "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/";
   const fmtSec = (s) => s.toFixed(1).replace(".", ",");
   const fmtClock = (ms) => { const t = Math.max(0, Math.floor(ms / 1000)); const h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), s = t % 60; return (h ? h + ":" + String(m).padStart(2, "0") : String(m).padStart(2, "0")) + ":" + String(s).padStart(2, "0"); };
 
@@ -335,7 +418,12 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     orb: $("orb"), title: $("stateTitle"), sub: $("stateSub"), alert: $("alert"),
     start: $("startBtn"), newBtn: $("newBtn"), pause: $("pauseBtn"), check: $("checkBtn"), done: $("doneBtn"),
     topic: $("topic"), notes: $("notes"), notesEmpty: $("notesEmpty"), transcript: $("transcript"), liveLine: $("liveLine"),
-    clock: $("clock"),
+    clock: $("clock"), tagline: $("tagline"), modeListen: $("modeListen"), modeQuiz: $("modeQuiz"),
+    wrongBtn: $("wrongBtn"), repeat: $("repeatBtn"), skip: $("skipBtn"), topicBox: $("topicBox"),
+    notesPanel: $("notesPanel"), quizPanel: $("quizPanel"), qFile: $("qFile"), qPick: $("qPick"), qRange: $("qRange"),
+    qFrom: $("qFrom"), qTo: $("qTo"), qExtract: $("qExtract"), qStatus: $("qStatus"), qProgress: $("qProgress"),
+    qList: $("qList"), qTranscript: $("qTranscript"), qClear: $("qClear"),
+    quizKey: $("quizKey"), quizKeyStatus: $("quizKeyStatus"), exModel: $("exModel"),
     apiKey: $("apiKey"), keyStatus: $("keyStatus"), settings: $("settings"), silence: $("silence"), silenceOut: $("silenceOut"),
     voice: $("voice"), model: $("model"), prompt: $("prompt"), promptStatus: $("promptStatus")
   };
@@ -345,8 +433,14 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     voice: store.get("voice", "Kore"),
     model: store.get("model", "gemini-3.8-live"),
     topic: store.get("topic", ""),
-    customPrompt: store.get("prompt6", "")
+    customPrompt: store.get("prompt6", ""),
+    quizKey: store.get("qkey", ""),
+    exModel: store.get("exmodel", "gemini-3.8-flash")
   };
+  // Mod: "listen" (siz anlatırsınız, o dinler) ya da "quiz" (o sorar, siz cevaplarsınız)
+  let mode = store.get("mode", "listen") === "quiz" ? "quiz" : "listen";
+  const isQuiz = () => mode === "quiz";
+  const keyNow = () => (isQuiz() && cfg.quizKey) || cfg.key;
   store.del("prompt"); store.del("prompt2"); store.del("prompt3"); store.del("prompt4"); store.del("prompt5"); store.del("style"); // eski sürümün talimat ve tarz kayıtları
   store.del("quota"); // kaldırılan kota halkasının sayaçları
 
@@ -364,6 +458,11 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     els.prompt.value = cfg.customPrompt || DEFAULT_PROMPT;
     els.promptStatus.textContent = cfg.customPrompt ? "Düzenlenmiş talimat kullanılıyor." : "";
     $("keyHelp").hidden = !!cfg.key;
+    els.quizKey.value = cfg.quizKey;
+    els.quizKeyStatus.textContent = cfg.quizKey ? "Kayıtlı" : "";
+    els.quizKeyStatus.className = cfg.quizKey ? "ok" : "hint";
+    els.exModel.value = cfg.exModel;
+    if (els.exModel.value !== cfg.exModel) els.exModel.value = "gemini-3.8-flash";
   }
   renderSettings();
   if (!cfg.key) els.settings.open = true;
@@ -388,8 +487,16 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     renderSettings();
   };
   $("resetPrompt").onclick = () => { cfg.customPrompt = ""; store.del("prompt6"); renderSettings(); };
+  $("saveQuizKey").onclick = () => {
+    const v = els.quizKey.value.trim();
+    if (!v) { els.quizKeyStatus.textContent = "Önce anahtarı yapıştırın."; els.quizKeyStatus.className = "hint"; return; }
+    cfg.quizKey = v; store.set("qkey", v); renderSettings(); hideAlert();
+  };
+  $("forgetQuizKey").onclick = () => { cfg.quizKey = ""; store.del("qkey"); renderSettings(); };
+  els.exModel.onchange = () => { cfg.exModel = els.exModel.value; store.set("exmodel", cfg.exModel); };
 
   function instruction() {
+    if (isQuiz()) return quizInstruction();
     const base = cfg.customPrompt || DEFAULT_PROMPT;
     const topic = els.topic.value.trim();
     return topic ? base + "\n\nBugünkü konu: " + topic + "." : base;
@@ -410,8 +517,9 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
   const log = [];
   let curMe = null;
   // Anlatım süresi derse aittir: durdurup devam ettiğinizde ya da sayfadan çıkıp döndüğünüzde kaldığı yerden sürer.
-  function lectureMs() { return lecture.baseMs + (session.startedAt ? Date.now() - session.startedAt : 0); }
-  function elapsed() { return fmtClock(lectureMs()); }
+  // Soru modunda saat yalnızca o oturumun süresini gösterir; dersin süresine eklenmez.
+  function lectureMs() { return lecture.baseMs + (!isQuiz() && session.startedAt ? Date.now() - session.startedAt : 0); }
+  function elapsed() { return fmtClock(isQuiz() ? (session.startedAt ? Date.now() - session.startedAt : 0) : lectureMs()); }
   function renderNotes() {
     els.notes.innerHTML = "";
     notes.forEach(n => {
@@ -440,9 +548,27 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
   function appendTo(entry, frag) {
     entry.text += frag;
     entry.el.lastChild.textContent = entry.text;
-    els.transcript.scrollTop = els.transcript.scrollHeight;
-    saveSoon();
+    const box = entry.q ? els.qTranscript : els.transcript;
+    box.scrollTop = box.scrollHeight;
+    if (!entry.q) saveSoon();
   }
+  // Soru modunun dökümü ayrıdır ve saklanmaz (ders notlarına karışmaz)
+  const qlog = [];
+  function qLog(who, text) {
+    const entry = { who, text, q: true };
+    qlog.push(entry);
+    const div = document.createElement("div");
+    div.className = who === "me" ? "me" : who === "pal" ? "pal" : "sys";
+    if (who === "sys") div.textContent = text;
+    else { const w = document.createElement("span"); w.className = "who"; w.textContent = who === "me" ? "Siz:" : "Soran:"; const s = document.createElement("span"); s.textContent = text; div.append(w, s); }
+    entry.el = div;
+    els.qTranscript.append(div);
+    if (els.qTranscript.children.length > 300) els.qTranscript.firstChild.remove();
+    if (qlog.length > 300) qlog.shift();
+    els.qTranscript.scrollTop = els.qTranscript.scrollHeight;
+    return entry;
+  }
+  function sysLog(text) { return isQuiz() ? qLog("sys", text) : addLog("sys", text); }
   $("copyBtn").onclick = async () => {
     const lines = ["TUS Dinleyici — notlar" + (els.topic.value.trim() ? " (" + els.topic.value.trim() + ")" : "")];
     notes.forEach(n => lines.push(n.at + "  " + n.text));
@@ -473,7 +599,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
   }
   function saveLecture() {
     clearTimeout(lecture.timer); lecture.timer = 0;
-    if (!lecture.dirty && !session.startedAt) return;   // değişiklik yoksa kayıt zamanı da değişmesin
+    if (!lecture.dirty && (isQuiz() || !session.startedAt)) return;   // değişiklik yoksa kayıt zamanı da değişmesin
     lecture.dirty = false; lecture.lastSave = Date.now();
     if (!hasLecture()) { store.del("lecture"); return; }
     const data = {
@@ -529,9 +655,17 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
       : "Devam ederseniz dinleyici, kota harcamamak için önceki anlatımı hatırlamaz.");
   }
   function idleButtons() {
+    if (isQuiz()) { quizIdleButtons(); return; }
     const resume = hasLecture();
     els.start.textContent = resume ? "Kaldığın yerden devam et" : "Anlatmaya başla";
     els.newBtn.hidden = !resume;
+    els.wrongBtn.hidden = true;
+  }
+  // Boştayken durum satırı: moda ve kayıtlı içeriğe göre
+  function idleState() {
+    if (isQuiz()) { quizIdleState(); return; }
+    if (hasLecture()) setState("idle", "Kaldığınız yer hazır", resumeHint());
+    else setState("idle", "Hazır", "Başlamak için düğmeye basın, sonra anlatmaya başlayın.");
   }
 
   // ---------- Ses ----------
@@ -651,6 +785,12 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
   // BARGE_MS'den uzun konuşursanız sözünüzün başından itibaren gönderilir ve dinleyici susar.
   const BARGE_MS = 1500;                               // "hı hı", "evet", "aynen öyle" bunun altında kalır
   const BARGE_GAP_MS = 350;                             // hece arası boşluk sayılan en uzun sessizlik
+  // Soru modunda cevaplar kısadır ("C şıkkı", "geç"): yarım saniyelik söz araya girmeye yeter,
+  // tabak tıkırtısı gibi anlık sesler ise yetmez. Sustuktan 1 sn sonra cevap bitmiş sayılır.
+  const QUIZ_BARGE_MS = 500;
+  const QUIZ_SILENCE = 1.0;
+  function bargeMs() { return isQuiz() ? QUIZ_BARGE_MS : BARGE_MS; }
+  function silenceSec() { return isQuiz() ? QUIZ_SILENCE : cfg.silence; }
   const barge = { pre: [], buf: [], speechMs: 0, quietMs: 0, active: false };
   function resetBarge() { barge.pre = []; barge.buf = []; barge.speechMs = 0; barge.quietMs = 0; barge.active = false; }
   function resetGate() { gate.sending = false; gate.ring = []; gate.quietMs = 0; gate.hot = 0; resetBarge(); }
@@ -678,7 +818,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
       }
       gate.ring.push(b64);
       if (gate.ring.length > PRE_ROLL_CHUNKS) gate.ring.shift();
-      if (barge.speechMs >= BARGE_MS) {
+      if (barge.speechMs >= bargeMs()) {
         // Gerçekten söze girdiniz: baştan itibaren gönder, dinleyici susacak
         barge.active = true;
         const out = barge.pre.concat(barge.buf);
@@ -691,7 +831,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     if (gate.sending) {
       sendAudio(b64);
       gate.quietMs = speech ? 0 : gate.quietMs + CHUNK_MS;
-      if (gate.quietMs >= cfg.silence * 1000 + 1000) {
+      if (gate.quietMs >= silenceSec() * 1000 + 1000) {
         gate.sending = false; gate.ring = []; gate.hot = 0;
         if (session.ready && !session.paused) rawSend(session.ws, { realtimeInput: { audioStreamEnd: true } });
       }
@@ -742,8 +882,8 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
       systemInstruction: { parts: [{ text: instruction() }] }
     };
     if (level <= 2) s.generationConfig.speechConfig = { voiceConfig: { prebuiltVoiceConfig: { voiceName: cfg.voice } } };
-    if (level <= 4) s.realtimeInputConfig = { automaticActivityDetection: { endOfSpeechSensitivity: "END_SENSITIVITY_LOW", silenceDurationMs: Math.round(cfg.silence * 1000) } };
-    else if (level === 5) s.realtimeInputConfig = { automaticActivityDetection: { silenceDurationMs: Math.min(3000, Math.round(cfg.silence * 1000)) } };
+    if (level <= 4) s.realtimeInputConfig = { automaticActivityDetection: { endOfSpeechSensitivity: "END_SENSITIVITY_LOW", silenceDurationMs: Math.round(silenceSec() * 1000) } };
+    else if (level === 5) s.realtimeInputConfig = { automaticActivityDetection: { silenceDurationMs: Math.min(3000, Math.round(silenceSec() * 1000)) } };
     if (level <= 3) {
       s.inputAudioTranscription = level <= 1 ? { languageCodes: ["tr"] } : {};
       s.outputAudioTranscription = {};
@@ -780,7 +920,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
 
   function handshake(level) {
     return new Promise((resolve, reject) => {
-      const url = WS_OVERRIDE || (LIVE_URL + "?key=" + encodeURIComponent(cfg.key));
+      const url = WS_OVERRIDE || (LIVE_URL + "?key=" + encodeURIComponent(keyNow()));
       let ws, done = false, opened = false;
       try { ws = new WebSocket(url); } catch (e) { reject({ kind: "network", reason: String(e && e.message || e) }); return; }
       ws.binaryType = "arraybuffer";
@@ -826,12 +966,14 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
 
   function attach(ws) {
     session.ws = ws; session.ready = true; session.goAway = false; session.reconnecting = false;
+    session.sentAudio = false;   // bu bağlantıda henüz ses gönderilmedi
     const buffered = session.buffer; session.buffer = [];
+    if (buffered.length) session.sentAudio = true;
     buffered.forEach(b64 => rawSend(ws, { realtimeInput: { audio: { data: b64, mimeType: "audio/pcm;rate=16000" } } }));
     if (!session.levelNoted && session.level > 0) {
       session.levelNoted = true;
       const what = ["", "tamamen sessiz kalma özelliğini", "Türkçe döküm ipucunu", "ses seçimini", "yazılı dökümü", "yazılı dökümü", "yazılı dökümü"][session.level];
-      addLog("sys", "Bu model " + what + " desteklemiyor; o özellik olmadan bağlandı.");
+      sysLog("Bu model " + what + " desteklemiyor; o özellik olmadan bağlandı.");
     }
     if (session.level >= 6) showAlert("<b>Bu model sessizlik süresi ayarını kabul etmedi.</b> Varsayılan davranışla çalışıyor; sözünüzü daha sık kesebilir. Ayarlar'dan başka bir model deneyin.");
     listeningState();
@@ -839,19 +981,19 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
   function rawSend(ws, obj) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj)); }
   function sendAudio(b64) {
     if (session.paused) return;
-    if (session.ready && session.ws && session.ws.readyState === 1) rawSend(session.ws, { realtimeInput: { audio: { data: b64, mimeType: "audio/pcm;rate=16000" } } });
+    if (session.ready && session.ws && session.ws.readyState === 1) { rawSend(session.ws, { realtimeInput: { audio: { data: b64, mimeType: "audio/pcm;rate=16000" } } }); session.sentAudio = true; }
     else if (session.reconnecting) { session.buffer.push(b64); if (session.buffer.length > 160) session.buffer.shift(); }
   }
-  function sendText(text) {
-    if (!session.ready) { if (session.reconnecting) session.retryText = text; return; }
-    rawSend(session.ws, { realtimeInput: { audioStreamEnd: true } });
+  function sendText(text, label) {
+    if (!session.ready) { if (session.reconnecting) { session.retryText = text; session.retryLabel = label; } return; }
+    if (session.sentAudio) rawSend(session.ws, { realtimeInput: { audioStreamEnd: true } });   // açık bir ses akışı varsa kapat
     if (session.textVia === "client") rawSend(session.ws, { clientContent: { turns: [{ role: "user", parts: [{ text }] }], turnComplete: true } });
     else rawSend(session.ws, { realtimeInput: { text } });
-    session.lastTextSent = { text, at: Date.now() };
+    session.lastTextSent = { text, label, at: Date.now() };
     session.expectingAnswer = true;
-    addLog("sys", text === DONE_TEXT ? "Anlatımın bittiği bildirildi." : "Eksik olup olmadığı soruldu.");
+    sysLog(label || (text === DONE_TEXT ? "Anlatımın bittiği bildirildi." : "Eksik olup olmadığı soruldu."));
     session.thinkingSince = Date.now();
-    setState("live", "Düşünüyor", "Birazdan cevap verecek.");
+    setState("live", "Düşünüyor", isQuiz() ? "Birazdan konuşacak." : "Birazdan cevap verecek.");
   }
 
   function onServer(ws, msg) {
@@ -860,13 +1002,13 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
       const u = msg.sessionResumptionUpdate;
       if (u.resumable !== false && u.newHandle) session.handle = u.newHandle;
     }
-    if (msg.goAway) { session.goAway = true; scheduleRollover(); }
+    if (msg.goAway) { session.goAway = true; scheduleRollover(msg.goAway); }
     const sc = msg.serverContent;
     if (!sc) return;
     if (sc.interimInputTranscription && sc.interimInputTranscription.text) els.liveLine.textContent = sc.interimInputTranscription.text;
     if (sc.inputTranscription && sc.inputTranscription.text) {
       els.liveLine.textContent = "";
-      if (!curMe) curMe = addLog("me", "");
+      if (!curMe) curMe = (isQuiz() ? qLog : addLog)("me", "");
       appendTo(curMe, sc.inputTranscription.text);
       session.userTail = ((session.userTail || "") + sc.inputTranscription.text).slice(-300);
       if (session.dialogOpen) {
@@ -905,13 +1047,16 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     weigh(t);
   }
   function palText(frag) {
+    if (isQuiz() && !turn && quiz.lastTurn) { quizLateText(quiz.lastTurn, frag); return; }   // döküm sesten geç geldi
     const t = turn || newTurn();
     t.text += frag;
+    if (isQuiz()) quizHear(t);
     if (t.decided) { if (t.play && t.entry) appendTo(t.entry, frag); return; }
     if (!t.done) weigh(t);
   }
   function weigh(t) {
     if (t.decided) return;
+    if (isQuiz()) { decide(t, true); return; }   // soru modunda her söz hemen çalınır
     const txt = t.text.trim();
     const gate = session.level >= 4 ? GATE_SEC : GATE_SEC_TX;
     if (!t.question && (looksLikeQuestion(session.userTail) || inDialog())) t.question = true;
@@ -928,9 +1073,9 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     }
     if (play) {
       curMe = null; els.liveLine.textContent = "";
-      t.entry = addLog("pal", t.text);
+      t.entry = (isQuiz() ? qLog : addLog)("pal", t.text);
       session.uiSpeaking = true; session.thinkingSince = 0;
-      setState("speaking live", "Konuşuyor", "Söze girerseniz hemen susar.");
+      setState("speaking live", "Konuşuyor", isQuiz() ? "Cevabı biliyorsanız sözünü kesebilirsiniz." : "Söze girerseniz hemen susar.");
       t.queue.forEach(([b, m]) => { playChunk(b, m); t.playedSec += chunkSec(b, m); });
     }
     t.queue = [];
@@ -959,6 +1104,15 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
   function finalizeTurn(t, interrupted) {
     if (t.final) return;
     t.final = true; clearTimeout(t.timer);
+    if (isQuiz()) {
+      if (t.entry && !t.entry.text.trim()) { t.entry.el.remove(); const i = qlog.indexOf(t.entry); if (i >= 0) qlog.splice(i, 1); t.entry = null; }
+      if (turn === t) turn = null;
+      curMe = null; session.userTail = "";
+      quiz.lastTurn = t;
+      quizTurnEnd(t, interrupted);
+      if (!palSpeaking()) { session.thinkingSince = 0; listeningState(); }
+      return;
+    }
     if (t.play && t.entry) {
       const text = t.entry.text.trim();
       if (!text && !interrupted && t.playedSec > 1.5 && session.level >= 4) addNote("(Sesli bir uyarı yaptı; bu modelde yazıya dökülemedi.)");
@@ -978,14 +1132,19 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
   function listeningState() {
     if (!session.running) return;
     if (session.paused) setState("paused", "Duraklatıldı", "Devam etmek için Devam et'e basın.");
+    else if (isQuiz()) setState("live", "Cevabınızı bekliyor", "“Tekrar”, “geç”, “açıkla” ya da “dur” diyebilirsiniz.");
     else setState("live", "Dinliyor", fmtSec(cfg.silence) + " saniye susmadan söz almaz.");
   }
 
-  function scheduleRollover() {
+  function scheduleRollover(info) {
     // Sunucu yakında kapatacak: dinleyici konuşmuyorsa hemen, konuşuyorsa bitince yeniden bağlan.
+    // Soru modunda soran çoğu zaman konuşur: sunucunun tanıdığı süre elverdiğince sözünün bitmesi beklenir.
+    const tl = info && info.timeLeft;
+    const leftMs = (typeof tl === "string" ? parseFloat(tl) : tl && typeof tl === "object" ? Number(tl.seconds) : 0) * 1000 || 0;
+    const maxWait = isQuiz() ? Math.max(6000, Math.min(45000, leftMs - 4000)) : 6000;
     const tryRoll = () => {
       if (!session.running || !session.goAway || session.ws === null) return;
-      if (palSpeaking() && Date.now() - rollStart < 6000) { setTimeout(tryRoll, 250); return; }
+      if ((palSpeaking() || (isQuiz() && turn && !turn.done)) && Date.now() - rollStart < maxWait) { setTimeout(tryRoll, 250); return; }
       reconnect("rollover");
     };
     const rollStart = Date.now();
@@ -999,7 +1158,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     if (kind === "key" || kind === "quota" || kind === "billing" || kind === "region" || kind === "model") { fail(kind, ev.reason); return; }
     if (session.lastTextSent && Date.now() - session.lastTextSent.at < 3000 && /text|realtime_input|client_content/i.test(ev.reason || "")) {
       session.textVia = session.textVia === "realtime" ? "client" : "realtime";
-      session.retryText = session.lastTextSent.text;
+      session.retryText = session.lastTextSent.text; session.retryLabel = session.lastTextSent.label;
     }
     reconnect("drop", ev);
   }
@@ -1008,8 +1167,10 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     session.reconnecting = true; session.ready = false;
     const old = session.ws; session.ws = null;
     if (old) { try { old.onclose = null; old.close(1000); } catch {} }
+    const cut = !!(palSpeaking() || (turn && !turn.done));   // soranın sözü yarıda kaldı mı
     abortTurn(true);
-    if (why !== "rollover") setState("live", "Yeniden bağlanıyor", "Anlatmaya devam edebilirsiniz; bu arada söyledikleriniz bekletiliyor.");
+    if (why === "quizroll") setState("live", "Sıradaki sorular geliyor", "Birkaç saniye sürebilir.");
+    else if (why !== "rollover") setState("live", "Yeniden bağlanıyor", isQuiz() ? "Birkaç saniye sürebilir." : "Anlatmaya devam edebilirsiniz; bu arada söyledikleriniz bekletiliyor.");
     session.contextLost = !session.handle;
     for (let i = 0; i < 6 && session.running; i++) {
       if (i > 0) await new Promise(r => setTimeout(r, Math.min(8000, 500 * 2 ** (i - 1))));
@@ -1018,9 +1179,15 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
         const ws = await openSession();
         if (!session.running) { try { ws.close(1000); } catch {} return; }
         attach(ws);
-        if (session.contextLost) addLog("sys", "Bağlantı yenilendi. Dinleyici önceki anlattıklarınızı hatırlamayabilir.");
+        if (isQuiz()) {
+          // Yeni oturum soruları talimattan bilir; kaldığı sorudan başlaması için dürtmek yeter
+          if (session.contextLost) { session.retryText = null; if (why !== "quizroll") qLog("sys", "Bağlantı yenilendi; kaldığınız sorudan devam ediliyor."); quizKick(); return; }
+          if (why !== "rollover") qLog("sys", "Bağlantı yenilendi.");
+          if (cut && quiz.cur >= 0 && !session.retryText && !quiz.ending) { session.retryText = "Bağlantı yenilendi. Kaldığın soruyu (Soru " + (quiz.cur + 1) + ") baştan oku."; session.retryLabel = "Sorunun yeniden okunması istendi."; }
+        }
+        else if (session.contextLost) addLog("sys", "Bağlantı yenilendi. Dinleyici önceki anlattıklarınızı hatırlamayabilir.");
         else if (why !== "rollover") addLog("sys", "Bağlantı yenilendi.");
-        if (session.retryText) { const t = session.retryText; session.retryText = null; sendText(t); }
+        if (session.retryText) { const t = session.retryText; session.retryText = null; sendText(t, session.retryLabel); }
         return;
       } catch (e) {
         if (e.kind === "stopped") return;
@@ -1045,7 +1212,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
       els.orb.style.setProperty("--mic", Math.min(1, mic * 9).toFixed(3));
       els.orb.style.setProperty("--out", Math.min(1, out * 7).toFixed(3));
       els.clock.textContent = elapsed();
-      if (Date.now() - lecture.lastSave > 15000) saveLecture();   // sayfa aniden kapanırsa en fazla 15 sn kaybolsun
+      if (!isQuiz() && Date.now() - lecture.lastSave > 15000) saveLecture();   // sayfa aniden kapanırsa en fazla 15 sn kaybolsun
       if (session.uiSpeaking && !(turn && turn.play && !turn.done) && !palSpeaking()) { session.uiSpeaking = false; listeningState(); }
       if (session.thinkingSince && Date.now() - session.thinkingSince > 15000) { session.thinkingSince = 0; listeningState(); }
     }
@@ -1053,13 +1220,537 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
   }
   requestAnimationFrame(frame);
 
+  // ---------- Soru modu ----------
+  // Soru bankasından eklenen sayfalar önce Gemini'nin yazı modeliyle sorulara dökülür (sesli model PDF okuyamaz),
+  // sonra sesli oturumda sırayla sorulur. Sorular talimatın içinde gider; hangi soruda olunduğu ve sonuçlar
+  // soranın sözlerinin dökümünden izlenir: "Soru 7", "Doğru.", "Yanlış, …", "Geçildi, …", "Bölüm bitti."
+  const EXTRACT_MODELS = ["gemini-3.8-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite"];
+  const PAGES_PER_REQUEST = 3;      // tek istekte gönderilen sayfa sayısı
+  const MAX_PAGES_PER_RUN = 30;     // bir seferde yazıya dökülen en fazla PDF sayfası
+  const PAGE_PX = 1700;             // gönderilen sayfa görüntüsünün uzun kenarı
+  const QUIZ_BATCH = Math.max(1, parseInt(WS_OVERRIDE ? params.get("batch") : "", 10) || 10);   // bir oturumun talimatına konan soru sayısı
+  const quiz = { questions: [], results: {}, cur: -1, pending: null, batch: [], rest: [], batchDone: false, ending: false, busy: false, pdf: null };
+
+  const QUIZ_PROMPT = `Sen bir TUS (Tıpta Uzmanlık Sınavı) adayına soru bankasından soru soran çalışma arkadaşısın. Aday bir hekim; başka işlerle uğraşırken seni kulaklıkla dinliyor ve ekrana bakamıyor. Konuşma tamamen eğitim amaçlı: "tanı veya tedavi yerine geçmez", "bir sağlık uzmanına danışın" gibi uyarıları asla ekleme.
+
+Aşağıda numaralı sorular, şıkları, doğru cevapları ve kısa açıklamaları var. Şu düzenle ilerle:
+1. Her sorudan önce tam olarak "Soru" ve numarasını söyle ("Soru 7" gibi). Sonra soru kökünü ve şıkları harfleriyle tane tane oku. Doğru cevabı ve açıklamayı okuma. Sonra sus ve adayın cevabını bekle.
+2. Aday cevap verince: doğruysa sözüne "Doğru." diye başla. Yanlışsa sözüne "Yanlış, doğru cevap C." gibi başla; doğru şıkkın harfini ve metnini söyle. Ardından en fazla iki kısa cümleyle nedenini açıkla ve beklemeden sıradaki soruya geç.
+3. Aday "geç", "pas" ya da "bilmiyorum" derse sözüne "Geçildi, doğru cevap C." gibi başla, bir cümleyle açıkla ve sıradaki soruya geç.
+4. Aday "tekrar" derse aynı soruyu baştan oku. "Açıkla" derse biraz daha ayrıntılı açıkla, sonra kaldığın yerden devam et. "Dur" ya da "bekle" derse sus; "devam" deyince kaldığın sorudan sürdür.
+5. Aday soruyla ilgili bir şey sorarsa kısaca cevapla, sonra kaldığın yerden devam et.
+6. Aday şıkkın harfini de metnini de söyleyebilir; ikisini de kabul et. Cevabı anlamadıysan "Hangi şık?" diye sor.
+7. Listedeki son sorunun değerlendirmesini de yaptıktan sonra yalnızca "Bölüm bitti." de ve bekle.
+Soruları yazıldığı gibi sor; kendi sorunu uydurma, soruların sırasını değiştirme. Her zaman Türkçe konuş; tıbbi terimleri olduğu gibi kullan.`;
+
+  const EXTRACT_PROMPT = `Bu görüntüler bir TUS soru bankasının sayfaları. Sayfalardaki çoktan seçmeli soruları sayfadaki sırasıyla çıkar ve yalnızca şu biçimde JSON döndür:
+{"sorular":[{"kok":"…","siklar":["…","…","…","…","…"],"cevap":"C","kaynak":"kitap","aciklama":"…","gorsel":false}]}
+
+Kurallar:
+- "kok": soru kökünün tamamı, sayfada yazdığı gibi. Soru numarasını yazma.
+- "siklar": şıkların metni A'dan E'ye sırayla. Başlarına harf koyma.
+- "cevap": doğru şıkkın harfi. Sayfalarda cevap anahtarı, "Cevap: C" gibi bir not ya da açıklamalı çözüm varsa onu kullan ve "kaynak" için "kitap" yaz. Yoksa doğru cevabı kendin belirle ve "kaynak" için "model" yaz.
+- "aciklama": doğru cevabın nedenini anlatan en fazla iki kısa cümle. Sayfada çözüm varsa onu özetle.
+- "gorsel": soru sayfadaki bir resim, grafik, EKG, röntgen ya da şekil görülmeden cevaplanamıyorsa true, aksi halde false.
+- Kökü ya da şıkları bu sayfalarda tamamlanmayan soruları ve soru olmayan metinleri alma.
+- Hiç soru yoksa {"sorular":[]} döndür. JSON dışında hiçbir şey yazma.`;
+
+  // --- Kayıt ---
+  function validQ(q) { return q && typeof q.stem === "string" && q.stem && Array.isArray(q.opts) && q.opts.length >= 2 && q.opts.every(o => typeof o === "string"); }
+  function saveQuiz() {
+    if (!quiz.questions.length) { store.del("quiz"); return; }
+    store.set("quiz", JSON.stringify({ v: 1, savedAt: Date.now(), questions: quiz.questions, results: quiz.results }));
+  }
+  function restoreQuiz() {
+    let d = null;
+    try { d = JSON.parse(store.get("quiz", "") || "null"); } catch {}
+    if (!d || d.v !== 1 || !Array.isArray(d.questions) || !d.questions.every(validQ)) return;
+    quiz.questions = d.questions.map(q => ({ stem: q.stem, opts: q.opts.slice(0, 5), ans: /^[A-E]$/.test(q.ans || "") ? q.ans : "", src: q.src === "kitap" ? "kitap" : "model", expl: typeof q.expl === "string" ? q.expl : "", visual: !!q.visual }));
+    quiz.results = {};
+    if (d.results && typeof d.results === "object") {
+      for (const [k, v] of Object.entries(d.results)) if (/^\d+$/.test(k) && +k < quiz.questions.length && (v === "D" || v === "Y" || v === "G")) quiz.results[k] = v;
+    }
+  }
+
+  // --- Sayılar ve durum ---
+  function quizCounts() {
+    let d = 0, y = 0, g = 0, vis = 0;
+    quiz.questions.forEach((q, i) => { if (q.visual) { vis++; return; } const r = quiz.results[i]; if (r === "D") d++; else if (r === "Y") y++; else if (r === "G") g++; });
+    const usable = quiz.questions.length - vis;
+    return { d, y, g, vis, usable, left: usable - d - y - g };
+  }
+  function quizCountText() {
+    const c = quizCounts(), parts = [c.d + " doğru", c.y + " yanlış"];
+    if (c.g) parts.push(c.g + " geçildi");
+    if (c.left) parts.push(c.left + " kaldı");
+    return parts.join(" · ") + ".";
+  }
+  function answerText(q) { return q.ans ? q.ans + ") " + q.opts[q.ans.charCodeAt(0) - 65] : ""; }
+  function quizIdleButtons() {
+    const c = quizCounts(), asked = c.d + c.y + c.g;
+    els.start.textContent = !c.usable || !asked ? "Soruları başlat" : c.left ? "Kaldığın sorudan devam et" : "Baştan sor";
+    els.newBtn.hidden = true;
+    els.wrongBtn.hidden = !(c.y + c.g);
+    els.wrongBtn.textContent = "Yanlışları sor (" + (c.y + c.g) + ")";
+  }
+  function quizIdleState() {
+    const c = quizCounts(), asked = c.d + c.y + c.g;
+    if (!c.usable) setState("idle", "Soru modu", "Soru bankasından bir PDF ya da sayfa fotoğrafı ekleyin.");
+    else if (!asked) setState("idle", "Sorular hazır", c.usable + " soru. Başlatınca sırayla sorar; cevabı sesli verin.");
+    else if (c.left) setState("idle", "Kaldığınız soru hazır", quizCountText());
+    else setState("idle", "Sorular bitti", quizCountText());
+  }
+  function renderQuiz() {
+    const c = quizCounts(), has = quiz.questions.length > 0;
+    els.qProgress.hidden = !has;
+    els.qProgress.textContent = has ? c.usable + " soru · " + quizCountText().replace(/\.$/, "") + (c.vis ? " · " + c.vis + " görselli soru sesli sorulmaz" : "") : "";
+    els.qClear.hidden = !has;
+    const frag = document.createDocumentFragment();
+    let curLi = null;
+    quiz.questions.forEach((q, i) => {
+      const r = quiz.results[i];
+      const li = document.createElement("li");
+      li.className = (q.visual ? "q-vis" : r === "D" ? "q-ok" : r === "Y" ? "q-bad" : r === "G" ? "q-skip" : "") + (i === quiz.cur ? " q-cur" : "");
+      const n = document.createElement("span"); n.className = "n"; n.textContent = String(i + 1);
+      const body = document.createElement("div");
+      const p = document.createElement("p"); p.textContent = q.stem.length > 160 ? q.stem.slice(0, 157) + "…" : q.stem; body.append(p);
+      if (q.visual) { const a = document.createElement("p"); a.className = "ans"; a.textContent = "Görselli soru: sesli sorulmaz."; body.append(a); }
+      else if (r === "Y" || r === "G") {
+        const a = document.createElement("p"); a.className = "ans";
+        a.textContent = (q.ans ? "Doğru cevap: " + answerText(q) + (q.src === "kitap" ? "" : " (modelin cevabı)") + ". " : "") + (q.expl || "");
+        body.append(a);
+      }
+      const mark = document.createElement("span"); mark.className = "mark";
+      mark.textContent = q.visual ? "" : r === "D" ? "✓" : r === "Y" ? "✗" : r === "G" ? "–" : "";
+      if (mark.textContent) mark.setAttribute("aria-label", r === "D" ? "doğru" : r === "Y" ? "yanlış" : "geçildi");
+      li.append(n, body, mark); frag.append(li);
+      if (i === quiz.cur) curLi = li;
+    });
+    els.qList.textContent = ""; els.qList.append(frag);
+    if (curLi) els.qList.scrollTop = Math.max(0, curLi.offsetTop - els.qList.offsetTop - 48);
+  }
+
+  // --- Sesli oturum ---
+  function quizPlan(onlyWrong) {
+    const usable = [];
+    quiz.questions.forEach((q, i) => { if (!q.visual) usable.push(i); });
+    if (onlyWrong) return usable.filter(i => quiz.results[i] === "Y" || quiz.results[i] === "G");
+    const left = usable.filter(i => !quiz.results[i]);
+    return left.length ? left : usable;   // hepsi sorulduysa baştan
+  }
+  function quizBegin(list, onlyWrong) {
+    if (onlyWrong || list.every(i => quiz.results[i])) list.forEach(i => { delete quiz.results[i]; });   // yeniden sorulacaklar
+    quiz.rest = list.slice(); quiz.batch = quiz.rest.splice(0, QUIZ_BATCH);
+    quiz.cur = -1; quiz.pending = null; quiz.batchDone = false; quiz.ending = false;
+    saveQuiz(); renderQuiz();
+  }
+  function quizTodo() { return quiz.batch.filter(i => !quiz.results[i]); }
+  function quizInstruction() {
+    const todo = quizTodo();
+    const first = todo.includes(quiz.cur) ? quiz.cur : todo[0];
+    const lines = [QUIZ_PROMPT, ""];
+    if (first !== undefined) lines.push("İlk soracağın soru: Soru " + (first + 1) + ".", "");
+    lines.push("SORULAR");
+    todo.forEach(i => {
+      const q = quiz.questions[i];
+      lines.push("", "Soru " + (i + 1), q.stem);
+      q.opts.forEach((o, k) => lines.push(String.fromCharCode(65 + k) + ") " + o));
+      lines.push("Doğru cevap: " + (q.ans ? answerText(q) : "belirtilmemiş; kendi bilgine göre değerlendir"));
+      if (q.expl) lines.push("Açıklama: " + q.expl);
+    });
+    return lines.join("\n");
+  }
+  // Model ancak söz alınca konuşur: ilk soruyu başlatması için kısa bir yazı gönderilir
+  function quizKick() {
+    const todo = quizTodo();
+    if (!todo.length) { quizAdvance(); return; }
+    if (!todo.includes(quiz.cur)) quiz.cur = todo[0];
+    quiz.pending = null;
+    renderQuiz();
+    sendText("Hazırım, Soru " + (quiz.cur + 1) + " ile başla.", "Soru " + (quiz.cur + 1) + " ile başlaması istendi.");
+  }
+  const TR_ONES = { bir: 1, iki: 2, "üç": 3, "dört": 4, "beş": 5, "altı": 6, yedi: 7, sekiz: 8, dokuz: 9 };
+  const TR_TENS = { on: 10, yirmi: 20, otuz: 30, "kırk": 40, elli: 50, "altmış": 60, "yetmiş": 70, seksen: 80, doksan: 90 };
+  function trNumber(words) {
+    let v = 0, i = 0;
+    if (words[i] === "yüz") { v = 100; i++; }
+    else if (TR_ONES[words[i]] > 1 && words[i + 1] === "yüz") { v = TR_ONES[words[i]] * 100; i += 2; }
+    if (TR_TENS[words[i]]) { v += TR_TENS[words[i]]; i++; }
+    if (TR_ONES[words[i]]) { v += TR_ONES[words[i]]; i++; }
+    return v;
+  }
+  // Soranın sözünde geçen soru numaraları ("Soru 7", "soru yedi"). Sırayı korumak için sayı olmayanlar 0 olarak kalır.
+  function spokenNumbers(lower, final) {
+    const out = [], re = /soru\s+(?:numara\s+)?(\d{1,3}|[a-zçğıöşü]+(?:\s+[a-zçğıöşü]+){0,3})/g;
+    let m;
+    while ((m = re.exec(lower))) {
+      if (!final && re.lastIndex >= lower.length) break;   // sayı henüz yarım olabilir ("Soru 1" → "Soru 12")
+      out.push(/^\d/.test(m[1]) ? parseInt(m[1], 10) : trNumber(m[1].split(/\s+/)));
+    }
+    return out;
+  }
+  function quizCommit() {
+    const p = quiz.pending; quiz.pending = null;
+    if (!p || p.idx < 0 || p.idx !== quiz.cur) return;
+    quiz.results[p.idx] = p.r; saveQuiz();
+  }
+  // Sözün başındaki değerlendirme: "Doğru." D · "Yanlış, doğru cevap C." Y · "Geçildi, …" G · soru okuyorsa boş
+  function quizVerdict(head) {
+    const h = head.slice(0, 44), end = "(?=[\\s.,!?:;)]|$)";
+    if (/^soru\s+[\da-zçğıöşü]/.test(h) || /^(sorular|bölüm) bitti/.test(h)) return "";
+    if (/^(geç(ildi|iyorum|iyoruz|tik|elim)|pas)(?=[\s.,!?:;)]|$)/.test(h)) return "G";
+    if (new RegExp("^doğru cevap\\s+[a-e]" + end).test(h)) return "Y";   // "Doğru cevap C…": yanlış cevabın düzeltilmesi
+    const y = h.search(new RegExp("(^|[\\s,.!])(yanlış|maalesef|hayır)" + end));
+    const d = h.search(new RegExp("(^|[\\s,.!])doğru(?!\\s+cevap\\s+[a-e]" + end + ")" + end));
+    if (y >= 0 && y <= 16 && (d < 0 || y < d)) return "Y";
+    if (d >= 0 && d <= 16) return "D";
+    return "";
+  }
+  function quizHear(t, final) {
+    const lower = t.text.toLocaleLowerCase("tr");
+    // Değerlendirme sözü turun başındadır. "Doğru cevap C'ydi" bir yanlış bildirimi olabileceği için
+    // karar, sözün başı yeterince geldikten sonra verilir. Sonuç, sıradaki soruya geçilince kesinleşir.
+    if (t.qCur === undefined) t.qCur = quiz.ending ? -1 : quiz.cur;   // bu söz başladığında sorulmakta olan soru
+    if (!t.qRes && t.qCur >= 0) {
+      const head = lower.replace(/^[\s"'“”‘’(.,-]+/, "");
+      if (head.length >= 18 || (final && head.length)) {
+        const r = quizVerdict(head);
+        if (r) quiz.pending = { idx: t.qCur, r };
+        if (r || head.length >= 18) t.qRes = true;
+      }
+    }
+    const nums = spokenNumbers(lower, final);
+    let moved = false;
+    for (let k = t.qSeen || 0; k < nums.length; k++) {
+      const pos = quiz.batch.indexOf(nums[k] - 1);
+      if (pos < 0 || pos <= quiz.batch.indexOf(quiz.cur)) continue;   // listede yok ya da geriye dönük bir anma
+      quizCommit(); quiz.cur = nums[k] - 1; moved = true;
+    }
+    t.qSeen = nums.length;
+    if (!t.qEnd && /bölüm bitti|sorular bitti/.test(lower)) { t.qEnd = true; quizCommit(); quiz.cur = -1; quiz.batchDone = true; moved = true; }   // artık sorulan bir soru yok
+    if (moved) renderQuiz();
+  }
+  // Döküm, tur bittikten sonra da gelebilir: biten turun devamı sayılır ve yeniden okunur
+  function quizLateText(t, frag) {
+    t.text += frag;
+    if (t.entry) appendTo(t.entry, frag); else t.entry = qLog("pal", t.text);
+    quizHear(t, false);
+    clearTimeout(t.lateTimer);
+    t.lateTimer = setTimeout(() => { quizHear(t, true); quizAfterTurn(false); }, 1200);
+    quizAfterTurn(false);
+  }
+  function afterSpeech(fn) {
+    const tick = () => { if (!session.running) return; if (palSpeaking() || turn) { setTimeout(tick, 200); return; } fn(); };
+    setTimeout(tick, 250);
+  }
+  function quizAfterTurn(interrupted) {
+    if (!session.running || quiz.ending) return;
+    if (quiz.batchDone && !interrupted) { quiz.batchDone = false; afterSpeech(quizAdvance); }
+  }
+  function quizTurnEnd(t, interrupted) {
+    quizHear(t, true);
+    if (!session.running) return;
+    if (quiz.ending) { if (t.play && !interrupted) afterSpeech(quizFinish); return; }
+    quizAfterTurn(interrupted);
+  }
+  function quizAdvance() {
+    if (!session.running) return;
+    if (quiz.rest.length) {
+      // Sıradaki sorular yeni, boş bir oturumda sorulur: önceki soruların konuşması taşınmaz
+      quiz.batch = quiz.rest.splice(0, QUIZ_BATCH); quiz.cur = -1; quiz.pending = null;
+      session.handle = null;
+      reconnect("quizroll");
+      return;
+    }
+    const c = quizCounts();
+    quiz.ending = true;
+    sendText("Şunu aynen söyle: “Sorular bitti. " + c.d + " doğru, " + c.y + " yanlış" + (c.g ? ", " + c.g + " geçildi" : "") + ".”", "Sonuç okunuyor.");
+  }
+  function quizFinish() {
+    if (!session.running) return;
+    stop(false);
+    setState("idle", "Sorular bitti", quizCountText());
+  }
+  function quizStopped() {
+    quizCommit();
+    quiz.cur = -1; quiz.batch = []; quiz.rest = []; quiz.batchDone = false; quiz.ending = false;
+    saveQuiz(); renderQuiz();
+  }
+
+  // --- Sayfaları yazıya dökme ---
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+  function qStatus(text, err) { els.qStatus.textContent = text; els.qStatus.classList.toggle("err", !!err); }
+  function lockQ(b) { els.qPick.disabled = els.qExtract.disabled = els.qClear.disabled = b; }
+  // PDF okuyucu (pdf.js) yalnızca bir PDF seçildiğinde indirilir; ilk adres açılmazsa yedeği denenir
+  const PDFJS_BASES = [PDFJS_BASE].concat(localUrl(PDFJS_BASE) ? [] : ["https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/"]);
+  let pdfjsReady = null;
+  function loadPdfjs() {
+    if (!pdfjsReady) pdfjsReady = new Promise((res, rej) => {
+      const tryBase = (i) => {
+        if (i >= PDFJS_BASES.length) { pdfjsReady = null; rej(new Error("PDF okuyucu indirilemedi; internet bağlantınızı kontrol edin.")); return; }
+        const s = document.createElement("script");
+        s.src = PDFJS_BASES[i] + "pdf.min.js";
+        s.onload = () => { try { window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_BASES[i] + "pdf.worker.min.js"; res(window.pdfjsLib); } catch (e) { s.remove(); tryBase(i + 1); } };
+        s.onerror = () => { s.remove(); tryBase(i + 1); };
+        document.head.append(s);
+      };
+      tryBase(0);
+    });
+    return pdfjsReady;
+  }
+  // Büyük (taranmış) PDF'ler belleğe bütün olarak alınmaz: yalnızca istenen sayfaların baytları dosyadan okunur
+  async function openPdf(lib, file) {
+    try {
+      class FileRange extends lib.PDFDataRangeTransport {
+        requestDataRange(begin, end) { file.slice(begin, end).arrayBuffer().then(b => this.onDataRange(begin, new Uint8Array(b))); }
+      }
+      return await lib.getDocument({ range: new FileRange(file.size, new Uint8Array(0)), disableAutoFetch: true, disableStream: true, rangeChunkSize: 262144 }).promise;
+    } catch (e) {
+      return await lib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+    }
+  }
+  async function pageJpeg(doc, n) {
+    const page = await doc.getPage(n);
+    const v1 = page.getViewport({ scale: 1 });
+    const vp = page.getViewport({ scale: Math.min(3, PAGE_PX / Math.max(v1.width, v1.height)) });
+    const c = document.createElement("canvas");
+    c.width = Math.ceil(vp.width); c.height = Math.ceil(vp.height);
+    const ctx = c.getContext("2d");
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, c.width, c.height);
+    await page.render({ canvasContext: ctx, viewport: vp }).promise;
+    const b64 = c.toDataURL("image/jpeg", 0.82).split(",")[1];
+    page.cleanup(); c.width = c.height = 0;
+    return b64;
+  }
+  async function imageJpeg(file) {
+    let src;
+    try { src = await createImageBitmap(file, { imageOrientation: "from-image" }); }
+    catch {
+      src = await new Promise((res, rej) => { const im = new Image(); const u = URL.createObjectURL(file); im.onload = () => { URL.revokeObjectURL(u); res(im); }; im.onerror = () => { URL.revokeObjectURL(u); rej(new Error("Görsel açılamadı: " + file.name)); }; im.src = u; });
+    }
+    const w = src.width || src.naturalWidth, h = src.height || src.naturalHeight;
+    const k = Math.min(1, PAGE_PX / Math.max(w, h));
+    const c = document.createElement("canvas");
+    c.width = Math.max(1, Math.round(w * k)); c.height = Math.max(1, Math.round(h * k));
+    const ctx = c.getContext("2d");
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, c.width, c.height);
+    ctx.drawImage(src, 0, 0, c.width, c.height);
+    if (src.close) src.close();
+    const b64 = c.toDataURL("image/jpeg", 0.85).split(",")[1];
+    c.width = c.height = 0;
+    return b64;
+  }
+  function normQ(o) {
+    if (!o || typeof o !== "object") return null;
+    const clean = (v) => String(v == null ? "" : v).replace(/\s+/g, " ").trim();
+    const stem = clean(o.kok || o.stem || o.soru).replace(/^(soru\s*)?\d{1,4}\s*[.):-]\s*/i, "");
+    const raw = Array.isArray(o.siklar) ? o.siklar : Array.isArray(o.options) ? o.options : [];
+    const opts = raw.map(x => clean(x).replace(/^[A-Ea-e]\s*[).:-]\s*/, "")).filter(Boolean).slice(0, 5);
+    if (stem.length < 8 || opts.length < 2) return null;
+    let ans = clean(o.cevap || o.answer).toUpperCase().replace(/[^A-E]/g, "").slice(0, 1);
+    if (ans && ans.charCodeAt(0) - 65 >= opts.length) ans = "";
+    return { stem, opts, ans, src: /kitap/i.test(clean(o.kaynak)) ? "kitap" : "model", expl: clean(o.aciklama || o.explanation).slice(0, 600), visual: o.gorsel === true || o.visual === true };
+  }
+  function parseQuestions(text) {
+    if (!text) return null;
+    const s = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "");
+    let obj;
+    try { obj = JSON.parse(s); }
+    catch {
+      const a = s.indexOf("{"), b = s.lastIndexOf("}");
+      try { obj = a >= 0 && b > a ? JSON.parse(s.slice(a, b + 1)) : undefined; } catch {}
+      if (obj === undefined) { const x = s.indexOf("["), y = s.lastIndexOf("]"); try { obj = x >= 0 && y > x ? JSON.parse(s.slice(x, y + 1)) : undefined; } catch {} }
+    }
+    const arr = Array.isArray(obj) ? obj : obj && (Array.isArray(obj.sorular) ? obj.sorular : Array.isArray(obj.questions) ? obj.questions : null);
+    return Array.isArray(arr) ? arr.map(normQ).filter(Boolean) : null;
+  }
+  function callGemini(model, pics, json, viaQuery) {
+    const body = {
+      contents: [{ role: "user", parts: pics.map(d => ({ inlineData: { mimeType: "image/jpeg", data: d } })).concat([{ text: EXTRACT_PROMPT }]) }],
+      generationConfig: { temperature: 0.1 }
+    };
+    if (json) body.generationConfig.responseMimeType = "application/json";
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), 150000);
+    const key = keyNow() || "yerel-test", headers = { "Content-Type": "application/json" };
+    if (!viaQuery) headers["x-goog-api-key"] = key;
+    return fetch(API_BASE + "/v1beta/models/" + encodeURIComponent(model) + ":generateContent" + (viaQuery ? "?key=" + encodeURIComponent(key) : ""), {
+      method: "POST", headers, body: JSON.stringify(body), signal: ctl.signal
+    }).finally(() => clearTimeout(timer));
+  }
+  function retryDelay(data, msg) {
+    const det = data && data.error && Array.isArray(data.error.details) ? data.error.details : [];
+    for (const d of det) { const m = /^([\d.]+)s$/.exec((d && d.retryDelay) || ""); if (m) return parseFloat(m[1]); }
+    const m = /retry in ([\d.]+)\s*s/i.exec(msg || "");
+    return m ? parseFloat(m[1]) : 20;
+  }
+  // Seçili model olmazsa sıradaki denenir; Google "biraz bekle" derse beklenir.
+  let exOk = null;   // bu sayfa açıkken çalıştığı görülen model: sonraki istekler doğrudan ona gider
+  let exViaQuery = false;
+  async function extractBatch(pics, note) {
+    const first = exOk || cfg.exModel;
+    const models = [first].concat([cfg.exModel].concat(EXTRACT_MODELS).filter((m, i, a) => m !== first && a.indexOf(m) === i));
+    let lastErr = null;
+    for (const model of models) {
+      let json = true;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        let res, data;
+        try { res = await callGemini(model, pics, json, exViaQuery); data = await res.json().catch(() => null); }
+        catch (e) {
+          lastErr = { kind: "network", message: String(e && e.message || e) };
+          if (attempt < 1) { await sleep(2500); continue; }
+          throw lastErr;
+        }
+        if (res.ok) {
+          const cand = data && data.candidates && data.candidates[0];
+          const text = cand && cand.content && Array.isArray(cand.content.parts) ? cand.content.parts.filter(p => p && typeof p.text === "string" && !p.thought).map(p => p.text).join("") : "";
+          const list = parseQuestions(text);
+          if (list) { exOk = model; return list; }
+          lastErr = { kind: "parse", message: (data && data.promptFeedback && data.promptFeedback.blockReason) || (cand && cand.finishReason) || "boş yanıt" };
+          if (pics.length > 1) {   // yanıt sığmadı ya da engellendi: sayfaları tek tek gönder, olmayanı atla
+            const out = [];
+            for (const p of pics) {
+              try { out.push(...await extractBatch([p], note)); }
+              catch (e) { if (e && e.kind === "parse") { out.skipped = (out.skipped || 0) + 1; continue; } throw e; }
+            }
+            return out;
+          }
+          if (attempt < 1) continue;
+          throw lastErr;
+        }
+        const msg = (data && data.error && data.error.message) || ("HTTP " + res.status);
+        lastErr = { kind: "http", status: res.status, message: msg };
+        if (res.status === 401 || res.status === 403 || /api key not valid|api_key_invalid|unauthenticated/i.test(msg)) {
+          if (!exViaQuery) { exViaQuery = true; continue; }   // anahtar başlıkta kabul edilmediyse adreste dene
+          exViaQuery = false; throw lastErr;
+        }
+        if (res.status === 400 && json && /mime|json/i.test(msg)) { json = false; continue; }
+        if (res.status === 404 || /is not found|not supported for generatecontent|unknown model/i.test(msg)) break;   // sıradaki model
+        if (res.status === 429) {
+          if (/limit:\s*0\b|per ?day|perday|daily/i.test(msg)) break;   // bu modelin günlük hakkı yok ya da bitti
+          const wait = retryDelay(data, msg);
+          if (attempt < 2 && wait <= 65) { note("Google kısa bir süre beklememizi istiyor (" + Math.ceil(wait) + " sn)…"); await sleep(wait * 1000 + 500); continue; }
+          break;
+        }
+        if (res.status >= 500 && attempt < 2) { await sleep(3000); continue; }
+        break;
+      }
+    }
+    throw lastErr || { kind: "network", message: "bilinmeyen hata" };
+  }
+  function extractError(e) {
+    const raw = e && e.message ? " (" + String(e.message).slice(0, 180) + ")" : "";
+    if (e && e.kind === "http" && (e.status === 401 || e.status === 403 || /api key/i.test(e.message || ""))) return "Anahtar kabul edilmedi. Ayarlar'dan anahtarı kontrol edin." + raw;
+    if (e && e.kind === "http" && e.status === 429) return "Yazı modelinin ücretsiz sınırı doldu. Biraz sonra ya da yarın tekrar deneyin; Ayarlar'dan başka bir model de seçebilirsiniz." + raw;
+    if (e && e.kind === "http" && e.status === 404) return "Soruları yazıya dökecek model bu anahtarla kullanılamıyor." + raw;
+    if (e && e.kind === "parse") return "Model anlaşılır bir yanıt vermedi. Daha az sayfayla tekrar deneyin." + raw;
+    if (e && e.kind === "network") return "Google'a ulaşılamadı. İnternet bağlantınızı kontrol edip tekrar deneyin." + raw;
+    return "Sorular çıkarılamadı." + raw;
+  }
+  // src: { images: [File, …] } ya da { pdf: belge, from, to }
+  async function extractFrom(src) {
+    if (quiz.busy) return;
+    if (!keyNow() && !WS_OVERRIDE) {
+      els.settings.open = true; els.apiKey.focus();
+      showAlert("<b>Önce API anahtarını girin.</b> Aşağıdaki Ayarlar bölümünde adımları bulabilirsiniz.");
+      return;
+    }
+    quiz.busy = true; lockQ(true); hideAlert();
+    const total = src.images ? src.images.length : src.to - src.from + 1;
+    const before = quiz.questions.length;
+    let skipped = 0;
+    try {
+      for (let i = 0; i < total; i += PAGES_PER_REQUEST) {
+        const n = Math.min(PAGES_PER_REQUEST, total - i);
+        const span = total === 1 ? "" : " (" + (n === 1 ? i + 1 : (i + 1) + "–" + (i + n)) + " / " + total + ")";
+        qStatus("Sayfalar hazırlanıyor" + span + "…");
+        const pics = [];
+        for (let k = 0; k < n; k++) pics.push(src.images ? await imageJpeg(src.images[i + k]) : await pageJpeg(src.pdf, src.from + i + k));
+        qStatus("Sorular yazıya dökülüyor" + span + "… Sayfa başına birkaç saniye sürebilir.");
+        const list = await extractBatch(pics, (m) => qStatus(m));
+        skipped += list.skipped || 0;
+        list.forEach(q => { if (!quiz.questions.some(x => x.stem.slice(0, 80) === q.stem.slice(0, 80))) quiz.questions.push(q); });
+        saveQuiz(); renderQuiz();
+      }
+      const added = quiz.questions.slice(before);
+      const vis = added.filter(q => q.visual).length, own = added.filter(q => !q.visual && q.src !== "kitap").length;
+      const skip = skipped ? " " + skipped + " sayfa okunamadı ve atlandı." : "";
+      if (!added.length) qStatus("Bu sayfalarda yeni soru bulunamadı. Fotoğraf net değilse yeniden çekip deneyin." + skip, true);
+      else qStatus(added.length + " soru eklendi." + (own ? " " + own + " sorunun cevabı sayfada yoktu; cevabı model belirledi." : "") + (vis ? " " + vis + " görselli soru sesli sorulmaz." : "") + skip);
+    } catch (e) {
+      const added = quiz.questions.length - before;
+      qStatus((added ? added + " soru eklendi, sonra durdu. " : "") + extractError(e), true);
+    } finally {
+      quiz.busy = false; lockQ(false);
+      if (!session.running && isQuiz()) { quizIdleButtons(); quizIdleState(); }
+    }
+  }
+  els.qPick.onclick = () => { if (!quiz.busy) els.qFile.click(); };
+  els.qFile.onchange = async () => {
+    const files = Array.from(els.qFile.files || []);
+    els.qFile.value = "";
+    if (!files.length || quiz.busy) return;
+    const pdf = files.find(f => f.type === "application/pdf" || /\.pdf$/i.test(f.name));
+    const imgs = files.filter(f => /^image\//.test(f.type) || /\.(jpe?g|png|webp|heic|heif)$/i.test(f.name));
+    if (!pdf && !imgs.length) { qStatus("Bu dosya türü okunamıyor. PDF ya da fotoğraf seçin.", true); return; }
+    if (imgs.length) await extractFrom({ images: imgs });
+    if (!pdf) return;
+    quiz.busy = true; lockQ(true); qStatus("PDF açılıyor…");
+    try {
+      const lib = await loadPdfjs();
+      if (quiz.pdf) { try { quiz.pdf.doc.destroy(); } catch {} quiz.pdf = null; }
+      const doc = await openPdf(lib, pdf);
+      quiz.pdf = { doc, pages: doc.numPages };
+      els.qFrom.value = "1"; els.qTo.value = String(Math.min(doc.numPages, 4));
+      els.qFrom.max = els.qTo.max = String(doc.numPages);
+      els.qRange.hidden = false;
+      qStatus("“" + pdf.name + "”: " + doc.numPages + " sayfa. Soruların olduğu sayfa aralığını yazıp “Soruları çıkar”a basın (bir seferde en fazla " + MAX_PAGES_PER_RUN + " sayfa).");
+    } catch (e) {
+      els.qRange.hidden = true;
+      qStatus("PDF açılamadı. " + (e && e.message ? e.message : ""), true);
+    } finally { quiz.busy = false; lockQ(false); }
+  };
+  els.qExtract.onclick = () => {
+    if (!quiz.pdf || quiz.busy) return;
+    const from = parseInt(els.qFrom.value, 10), to = parseInt(els.qTo.value, 10);
+    if (!(from >= 1) || !(to >= from) || to > quiz.pdf.pages) { qStatus("Sayfa aralığı 1 ile " + quiz.pdf.pages + " arasında olmalı ve ilk sayfa son sayfadan büyük olmamalı.", true); return; }
+    if (to - from + 1 > MAX_PAGES_PER_RUN) { qStatus("Bir seferde en fazla " + MAX_PAGES_PER_RUN + " sayfa çıkarılabilir. Aralığı küçültüp kalan sayfaları sonra ekleyin.", true); return; }
+    extractFrom({ pdf: quiz.pdf.doc, from, to });
+  };
+  els.qClear.onclick = () => {
+    if (session.running || quiz.busy) return;
+    quiz.questions = []; quiz.results = {}; quiz.cur = -1; quiz.pending = null;
+    saveQuiz(); renderQuiz(); quizIdleButtons(); quizIdleState();
+    qStatus("Sorular silindi. Yeni bir PDF ya da sayfa fotoğrafı ekleyebilirsiniz.");
+  };
+
+  // --- Mod değiştirme ---
+  function renderMode() {
+    const q = isQuiz();
+    els.modeListen.setAttribute("aria-pressed", String(!q)); els.modeQuiz.setAttribute("aria-pressed", String(q));
+    els.notesPanel.hidden = q; els.quizPanel.hidden = !q;
+    els.topicBox.hidden = q; els.check.hidden = els.done.hidden = q; els.repeat.hidden = els.skip.hidden = !q;
+    els.tagline.textContent = q ? "Soru bankanızdan o sorsun, siz sesli cevaplayın." : "Siz anlatın, o dinlesin. Yalnızca önemli bir eksik ya da yanlış olduğunda konuşur.";
+    els.clock.textContent = elapsed();
+    if (q) renderQuiz();
+    idleButtons(); idleState();
+  }
+  function setMode(m) {
+    if (session.running || m === mode) return;
+    mode = m; store.set("mode", m);
+    hideAlert(); renderMode();
+  }
+  els.modeListen.onclick = () => setMode("listen");
+  els.modeQuiz.onclick = () => setMode("quiz");
+
   // ---------- Düğmeler ----------
   let wakeLock = null;
   // fresh = "Yeni ders": notlar, döküm ve süre silinip baştan başlanır.
   // Aksi hâlde kayıtlı bir ders varsa kaldığı yerden sürer; Google tarafında her başlatma yeni ve boş bir oturumdur.
+  // Soru modunda: fresh === "wrong" yalnızca yanlış yapılan ve geçilen soruları sorar.
   async function start(fresh) {
     hideAlert();
-    if (!cfg.key && !WS_OVERRIDE) {
+    if (!keyNow() && !WS_OVERRIDE) {
       els.settings.open = true; els.apiKey.focus();
       showAlert("<b>Önce API anahtarını girin.</b> Aşağıdaki Ayarlar bölümünde adımları bulabilirsiniz.");
       return;
@@ -1068,21 +1759,28 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
       showAlert("<b>Bu tarayıcı mikrofona erişemiyor.</b> Sayfayı Chrome ya da Edge ile açın.");
       return;
     }
-    cfg.topic = els.topic.value.trim(); store.set("topic", cfg.topic);
-    els.start.disabled = true; els.newBtn.hidden = true;
+    let plan = null;
+    if (isQuiz()) {
+      if (quiz.busy) { showAlert("<b>Sorular hâlâ yazıya dökülüyor.</b> Bitince başlatabilirsiniz."); return; }
+      plan = quizPlan(fresh === "wrong");
+      if (!plan.length) { showAlert("<b>Önce soru ekleyin.</b> Sağdaki “PDF ya da fotoğraf ekle” düğmesini kullanın."); return; }
+    }
+    else { cfg.topic = els.topic.value.trim(); store.set("topic", cfg.topic); }
+    els.start.disabled = true; els.newBtn.hidden = true; els.wrongBtn.hidden = true;
+    els.modeListen.disabled = els.modeQuiz.disabled = true;
     setState("live", "Mikrofon açılıyor", "İzin sorulursa İzin ver'e basın.");
     try { await startMic(); }
     catch (e) {
-      els.start.disabled = false; idleButtons();
-      if (hasLecture()) setState("idle", "Kaldığınız yer hazır", resumeHint());
-      else setState("idle", "Hazır", "Başlamak için düğmeye basın, sonra anlatmaya başlayın.");
+      els.start.disabled = false; els.modeListen.disabled = els.modeQuiz.disabled = false;
+      idleButtons(); idleState();
       showAlert(e && e.name === "NotAllowedError"
         ? "<b>Mikrofon izni verilmedi.</b> Adres çubuğunun solundaki simgeye tıklayıp mikrofona izin verin, sonra tekrar deneyin."
         : "<b>Mikrofon açılamadı.</b> Bilgisayara bağlı bir mikrofon olduğundan emin olun." + (e && e.message ? "<br><span class=\"hint\">" + escapeHtml(e.message) + "</span>" : ""));
       return;
     }
-    const resumed = !fresh && hasLecture();
-    if (!resumed) clearLecture();
+    let resumed = false;
+    if (isQuiz()) quizBegin(plan, fresh === "wrong");
+    else { resumed = !fresh && hasLecture(); if (!resumed) clearLecture(); }
     Object.assign(session, { running: true, paused: false, ready: false, handle: null, level: levelFor(cfg.model), startedAt: Date.now(), reconnecting: false, buffer: [], textVia: "realtime", lastTextSent: null, retryText: null, levelNoted: false, uiSpeaking: false, thinkingSince: 0, contextLost: false, expectingAnswer: false, userTail: "", dialogOpen: false, dialogChars: 0 });
     resetGate();
     setState("live", "Bağlanıyor", "Birkaç saniye sürebilir.");
@@ -1097,9 +1795,16 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
       return;
     }
     els.start.disabled = false; els.start.textContent = "Durdur"; els.start.classList.add("stop");
-    els.pause.disabled = els.check.disabled = els.done.disabled = false;
-    if (resumed) addLog("sys", "Kaldığınız yerden devam (" + elapsed() + "). Dinleyici yeni bir oturumla başladı: " + (els.topic.value.trim() ? "konuyu biliyor, " : "") + "önceki anlatımı hatırlamıyor.");
-    else addLog("sys", "Oturum başladı" + (els.topic.value.trim() ? ": " + els.topic.value.trim() : "") + ".");
+    els.pause.disabled = false;
+    if (isQuiz()) {
+      els.repeat.disabled = els.skip.disabled = false;
+      qLog("sys", "Soru oturumu başladı: " + plan.length + " soru.");
+      quizKick();
+    } else {
+      els.check.disabled = els.done.disabled = false;
+      if (resumed) addLog("sys", "Kaldığınız yerden devam (" + elapsed() + "). Dinleyici yeni bir oturumla başladı: " + (els.topic.value.trim() ? "konuyu biliyor, " : "") + "önceki anlatımı hatırlamıyor.");
+      else addLog("sys", "Oturum başladı" + (els.topic.value.trim() ? ": " + els.topic.value.trim() : "") + ".");
+    }
     try { if (navigator.wakeLock) wakeLock = await navigator.wakeLock.request("screen"); } catch {}
   }
   function stop(fromError) {
@@ -1108,20 +1813,28 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     if (session.ws) { try { session.ws.onclose = null; session.ws.close(1000); } catch {} }
     session.ws = null;
     abortTurn(false); stopMic(); resetGate();
-    if (was && !fromError) addLog("sys", "Durduruldu (" + elapsed() + ").");
-    if (session.startedAt) { lecture.baseMs = lectureMs(); session.startedAt = 0; }   // süre derste kalır
-    lecture.dirty = true; saveLecture();
+    if (was && !fromError) sysLog("Durduruldu (" + elapsed() + ").");
+    if (isQuiz()) { session.startedAt = 0; quizStopped(); }
+    else {
+      if (session.startedAt) { lecture.baseMs = lectureMs(); session.startedAt = 0; }   // süre derste kalır
+      lecture.dirty = true; saveLecture();
+    }
     els.start.disabled = false; els.start.classList.remove("stop"); idleButtons();
-    els.pause.disabled = els.check.disabled = els.done.disabled = true; els.pause.textContent = "Duraklat";
+    els.pause.disabled = els.check.disabled = els.done.disabled = els.repeat.disabled = els.skip.disabled = true; els.pause.textContent = "Duraklat";
+    els.modeListen.disabled = els.modeQuiz.disabled = false;
     els.liveLine.textContent = "";
     els.clock.textContent = elapsed();
     els.orb.style.setProperty("--mic", 0); els.orb.style.setProperty("--out", 0);
-    if (!fromError) setState("idle", "Durdu", hasLecture() ? "Kaydedildi. Sayfayı kapatsanız da kaldığınız yerden devam edebilirsiniz." : "Tekrar başlamak için düğmeye basın.");
-    else setState("idle", "Durdu", "Sorunu giderip tekrar başlatabilirsiniz.");
+    if (fromError) setState("idle", "Durdu", "Sorunu giderip tekrar başlatabilirsiniz.");
+    else if (isQuiz()) setState("idle", "Durdu", quizCountText() + " Kaldığınız soru kaydedildi.");
+    else setState("idle", "Durdu", hasLecture() ? "Kaydedildi. Sayfayı kapatsanız da kaldığınız yerden devam edebilirsiniz." : "Tekrar başlamak için düğmeye basın.");
     try { wakeLock && wakeLock.release(); } catch {} wakeLock = null;
   }
   els.start.onclick = () => { if (session.running) stop(false); else start(false); };
   els.newBtn.onclick = () => { if (!session.running) start(true); };
+  els.wrongBtn.onclick = () => { if (!session.running) start("wrong"); };
+  els.repeat.onclick = () => { if (!session.running) return; if (session.paused) els.pause.onclick(); sendText("Soruyu tekrar oku.", "Tekrar okuması istendi."); };
+  els.skip.onclick = () => { if (!session.running) return; if (session.paused) els.pause.onclick(); sendText("Bu soruyu geç.", "Soru geçildi."); };
   els.pause.onclick = () => {
     if (!session.running) return;
     session.paused = !session.paused;
@@ -1138,13 +1851,13 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") saveLecture(); });
   window.addEventListener("pagehide", () => saveLecture());
 
-  // Açılışta kayıtlı ders varsa geri getir
+  // Açılışta kayıtlı ders ve sorular varsa geri getir
   restoreLecture();
-  idleButtons();
-  if (hasLecture()) setState("idle", "Kaldığınız yer hazır", resumeHint());
+  restoreQuiz();
+  renderMode();
 
   // Test kancası (yalnızca ?ws= ile açıldığında)
-  if (WS_OVERRIDE) window.__tus = { session, notes, log, cfg, audio, gate, barge, lecture };
+  if (WS_OVERRIDE) window.__tus = { session, notes, log, cfg, audio, gate, barge, lecture, quiz, qlog, mode: () => mode };
 })();
 </script>
 </body>
