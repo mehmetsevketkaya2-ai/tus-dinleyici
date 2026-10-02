@@ -162,6 +162,8 @@ details.settings[open] > summary::before { content: "–"; }
 .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 input[type="range"] { width: 100%; accent-color: var(--hema); }
 .val { font: 500 0.95rem var(--mono); font-variant-numeric: tabular-nums; }
+label.check { display: flex; align-items: center; gap: 8px; margin-top: 10px; cursor: pointer; }
+label.check input { width: 18px; height: 18px; margin: 0; accent-color: var(--hema); flex: none; }
 .keybox { border: 1px dashed var(--hema); border-radius: 12px; padding: 16px; display: grid; gap: 10px; background: var(--hema-soft); }
 .keybox ol { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; font-size: 0.93rem; }
 a { color: var(--hema); }
@@ -280,6 +282,8 @@ a { color: var(--hema); }
           <label for="silence">Sustuğunuzda kaç saniye beklesin?</label>
           <input type="range" id="silence" min="0.5" max="10" step="0.5" value="4">
           <div class="row"><span class="val" id="silenceOut">4,0 sn</span><span class="hint">Bu kadar süre susmadan söz almaz. Kısa tutarsanız daha çabuk cevap verir ama düşünmek için durduğunuzda araya girebilir; sık bölünüyorsanız artırın.</span></div>
+          <label class="check" for="lockRun"><input type="checkbox" id="lockRun" checked> Ekran kilitliyken de çalışmayı dene</label>
+          <span class="hint">Oturum sürerken duyulmayan bir ses çalınır ve sayfa kilit ekranında oynatıcı gibi görünür; böylece telefon sayfayı uyutmaz. Oradaki duraklat düğmesi ve kulaklık düğmesi dinlemeyi duraklatır. Bazı telefonlar yine de mikrofonu keser; döndüğünüzde sayfa bunu bildirir.</span>
 
         </div>
 
@@ -423,7 +427,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     notesPanel: $("notesPanel"), quizPanel: $("quizPanel"), qFile: $("qFile"), qPick: $("qPick"), qRange: $("qRange"),
     qFrom: $("qFrom"), qTo: $("qTo"), qExtract: $("qExtract"), qStatus: $("qStatus"), qProgress: $("qProgress"),
     qList: $("qList"), qTranscript: $("qTranscript"), qClear: $("qClear"),
-    quizKey: $("quizKey"), quizKeyStatus: $("quizKeyStatus"), exModel: $("exModel"),
+    quizKey: $("quizKey"), quizKeyStatus: $("quizKeyStatus"), exModel: $("exModel"), lockRun: $("lockRun"),
     apiKey: $("apiKey"), keyStatus: $("keyStatus"), settings: $("settings"), silence: $("silence"), silenceOut: $("silenceOut"),
     voice: $("voice"), model: $("model"), prompt: $("prompt"), promptStatus: $("promptStatus")
   };
@@ -435,7 +439,8 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     topic: store.get("topic", ""),
     customPrompt: store.get("prompt6", ""),
     quizKey: store.get("qkey", ""),
-    exModel: store.get("exmodel", "gemini-3.8-flash")
+    exModel: store.get("exmodel", "gemini-3.8-flash"),
+    lockRun: store.get("lockrun", "1") !== "0"
   };
   // Mod: "listen" (siz anlatırsınız, o dinler) ya da "quiz" (o sorar, siz cevaplarsınız)
   let mode = store.get("mode", "listen") === "quiz" ? "quiz" : "listen";
@@ -463,6 +468,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     els.quizKeyStatus.className = cfg.quizKey ? "ok" : "hint";
     els.exModel.value = cfg.exModel;
     if (els.exModel.value !== cfg.exModel) els.exModel.value = "gemini-3.8-flash";
+    els.lockRun.checked = cfg.lockRun;
   }
   renderSettings();
   if (!cfg.key) els.settings.open = true;
@@ -494,6 +500,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
   };
   $("forgetQuizKey").onclick = () => { cfg.quizKey = ""; store.del("qkey"); renderSettings(); };
   els.exModel.onchange = () => { cfg.exModel = els.exModel.value; store.set("exmodel", cfg.exModel); };
+  els.lockRun.onchange = () => { cfg.lockRun = els.lockRun.checked; store.set("lockrun", cfg.lockRun ? "1" : "0"); };
 
   function instruction() {
     if (isQuiz()) return quizInstruction();
@@ -699,15 +706,22 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
         let sq = 0;
         for (let j = 0; j < CHUNK; j++) { const x = Math.max(-1, Math.min(1, audio.pending[j])); sq += x * x; i16[j] = x < 0 ? x * 0x8000 : x * 0x7fff; }
         audio.pending = audio.pending.slice(CHUNK);
+        audio.chunks = (audio.chunks || 0) + 1;
         gateChunk(toB64(i16), Math.sqrt(sq / CHUNK));
       }
     }
   }
   async function startMic() {
     audio.stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+    const track = audio.stream.getAudioTracks()[0];
+    if (track) {
+      track.onmute = () => { if (document.visibilityState === "hidden") bg.muted = true; };   // ekran kapalıyken telefon mikrofonu susturdu
+      track.onended = () => { if (session.running) bg.ended = true; };                        // telefon mikrofonu tamamen bıraktırdı
+    }
     if (!audio.ctx) {
       const AC = window.AudioContext || window.webkitAudioContext;
       audio.ctx = new AC();
+      audio.ctx.onstatechange = () => { if (session.running && audio.ctx.state !== "running") audio.ctx.resume().catch(() => {}); };
       audio.outGain = audio.ctx.createGain();
       audio.outAn = audio.ctx.createAnalyser(); audio.outAn.fftSize = 1024;
       audio.outGain.connect(audio.outAn); audio.outAn.connect(audio.ctx.destination);
@@ -1743,8 +1757,88 @@ Kurallar:
   els.modeListen.onclick = () => setMode("listen");
   els.modeQuiz.onclick = () => setMode("quiz");
 
-  // ---------- Düğmeler ----------
+  // ---------- Ekran kilitliyken çalışma ----------
+  // Tarayıcı, ses çalan bir sayfayı arka planda ve kilit ekranında canlı tutar. Oturum sürerken kulakla duyulmayacak
+  // kadar kısık ve pes bir ses döngüsü çalınır, sayfa da kendini medya oynatıcı olarak tanıtır (kilit ekranında görünür).
+  // Mikrofonu açık tutmak telefona kalmıştır: kesilirse sayfaya dönüldüğünde bildirilir.
+  const keep = { el: null, url: null, on: false, retry: 0 };
+  const bg = { hiddenAt: 0, chunks0: 0, muted: false, ended: false };
+  function keepAliveUrl() {
+    if (keep.url) return keep.url;
+    const rate = 8000, n = rate * 10, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+    const str = (o, t) => { for (let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); };
+    str(0, "RIFF"); v.setUint32(4, 36 + n * 2, true); str(8, "WAVEfmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); str(36, "data"); v.setUint32(40, n * 2, true);
+    for (let i = 0; i < n; i++) v.setInt16(44 + i * 2, Math.round(Math.sin(2 * Math.PI * 30 * i / rate) * 70), true);   // 30 Hz, yaklaşık −53 dB: duyulmaz, ama "sessiz" de sayılmaz
+    keep.url = URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
+    return keep.url;
+  }
+  function mediaSessionState() {
+    try { if ("mediaSession" in navigator) navigator.mediaSession.playbackState = !session.running ? "none" : session.paused ? "paused" : "playing"; } catch {}
+  }
+  function mediaSessionSet() {
+    if (!("mediaSession" in navigator)) return;
+    try { if (window.MediaMetadata) navigator.mediaSession.metadata = new MediaMetadata({ title: isQuiz() ? "Soru modu" : "Dinleyici", artist: "TUS Dinleyici" }); } catch {}
+    const on = (a, fn) => { try { navigator.mediaSession.setActionHandler(a, fn); } catch {} };
+    // Kilit ekranındaki düğmeler ve kulaklık düğmesi: duraklat / devam et / durdur
+    on("pause", () => { if (session.running && !session.paused) els.pause.onclick(); });
+    on("play", () => { if (session.running && session.paused) els.pause.onclick(); if (keep.on && keep.el && keep.el.paused) keep.el.play().catch(() => {}); });
+    on("stop", () => { if (session.running) stop(false); });
+    mediaSessionState();
+  }
+  function keepAliveStart() {
+    if (!cfg.lockRun) return;
+    try {
+      if (!keep.el) {
+        keep.el = new Audio(keepAliveUrl());
+        keep.el.loop = true;
+        // Sistem sesi durdurursa (arama, başka bir uygulama) kısa süre sonra yeniden dene
+        keep.el.addEventListener("pause", () => {
+          if (!keep.on || keep.retry) return;
+          keep.retry = setTimeout(() => { keep.retry = 0; if (keep.on && keep.el.paused) keep.el.play().catch(() => {}); }, 1500);
+        });
+      }
+      keep.on = true;
+      const p = keep.el.play();
+      if (p && p.catch) p.catch(() => {});
+    } catch {}
+    mediaSessionSet();
+  }
+  function keepAliveStop() {
+    keep.on = false; clearTimeout(keep.retry); keep.retry = 0;
+    try { if (keep.el) { keep.el.pause(); keep.el.currentTime = 0; } } catch {}
+    mediaSessionState();
+  }
   let wakeLock = null;
+  async function requestWakeLock() {
+    try { if (navigator.wakeLock && document.visibilityState === "visible") wakeLock = await navigator.wakeLock.request("screen"); } catch {}
+  }
+  function bgLeave() {
+    saveLecture();
+    if (session.running) { bg.hiddenAt = Date.now(); bg.chunks0 = audio.chunks || 0; bg.muted = false; }
+  }
+  // Sayfaya dönüldü: ekranı yeniden açık tut, susan parçaları canlandır, kilitliyken dinleme sürdü mü bak
+  async function bgReturn() {
+    const at = bg.hiddenAt; bg.hiddenAt = 0;
+    if (!session.running) return;
+    requestWakeLock();
+    if (keep.on && keep.el && keep.el.paused) keep.el.play().catch(() => {});
+    if (audio.ctx && audio.ctx.state !== "running") audio.ctx.resume().catch(() => {});
+    const dur = at ? Date.now() - at : 0, got = (audio.chunks || 0) - bg.chunks0;
+    const cut = bg.ended || (dur >= 8000 && (bg.muted || got < dur / CHUNK_MS * 0.6));
+    if (bg.ended) {
+      bg.ended = false;
+      try { stopMic(); await startMic(); }
+      catch (e) { showAlert("<b>Mikrofon yeniden açılamadı.</b> Durdurup tekrar başlatın."); stop(true); return; }
+    }
+    if (!at || dur < 8000) return;
+    if (cut) showAlert(cfg.lockRun
+      ? "<b>Ekran kapalıyken telefon dinlemeyi kesti.</b> Bu telefonda Chrome, ekran kilitliyken mikrofonu kullanamıyor olabilir. Telefonun Ayarlar → Uygulamalar → Chrome → Pil bölümünden “Kısıtlama yok”u seçip yeniden deneyin. Olmazsa ekranı açık bırakarak kullanın."
+      : "<b>Ekran kapalıyken dinleme durdu.</b> Ayarlar'dan “Ekran kilitliyken de çalışmayı dene” seçeneğini açabilirsiniz.");
+    else sysLog("Ekran kapalıyken " + fmtClock(dur) + " boyunca çalışmaya devam etti.");
+  }
+
+  // ---------- Düğmeler ----------
   // fresh = "Yeni ders": notlar, döküm ve süre silinip baştan başlanır.
   // Aksi hâlde kayıtlı bir ders varsa kaldığı yerden sürer; Google tarafında her başlatma yeni ve boş bir oturumdur.
   // Soru modunda: fresh === "wrong" yalnızca yanlış yapılan ve geçilen soruları sorar.
@@ -1768,10 +1862,12 @@ Kurallar:
     else { cfg.topic = els.topic.value.trim(); store.set("topic", cfg.topic); }
     els.start.disabled = true; els.newBtn.hidden = true; els.wrongBtn.hidden = true;
     els.modeListen.disabled = els.modeQuiz.disabled = true;
+    keepAliveStart();   // düğmeye basılmışken başlatılır (tarayıcı sesi ancak böyle çaldırır)
     setState("live", "Mikrofon açılıyor", "İzin sorulursa İzin ver'e basın.");
     try { await startMic(); }
     catch (e) {
       els.start.disabled = false; els.modeListen.disabled = els.modeQuiz.disabled = false;
+      keepAliveStop();
       idleButtons(); idleState();
       showAlert(e && e.name === "NotAllowedError"
         ? "<b>Mikrofon izni verilmedi.</b> Adres çubuğunun solundaki simgeye tıklayıp mikrofona izin verin, sonra tekrar deneyin."
@@ -1805,14 +1901,16 @@ Kurallar:
       if (resumed) addLog("sys", "Kaldığınız yerden devam (" + elapsed() + "). Dinleyici yeni bir oturumla başladı: " + (els.topic.value.trim() ? "konuyu biliyor, " : "") + "önceki anlatımı hatırlamıyor.");
       else addLog("sys", "Oturum başladı" + (els.topic.value.trim() ? ": " + els.topic.value.trim() : "") + ".");
     }
-    try { if (navigator.wakeLock) wakeLock = await navigator.wakeLock.request("screen"); } catch {}
+    mediaSessionState();
+    requestWakeLock();
   }
   function stop(fromError) {
     const was = session.running;
     session.running = false; session.ready = false; session.reconnecting = false; session.buffer = [];
     if (session.ws) { try { session.ws.onclose = null; session.ws.close(1000); } catch {} }
     session.ws = null;
-    abortTurn(false); stopMic(); resetGate();
+    abortTurn(false); stopMic(); resetGate(); keepAliveStop();
+    bg.hiddenAt = 0; bg.ended = false;
     if (was && !fromError) sysLog("Durduruldu (" + elapsed() + ").");
     if (isQuiz()) { session.startedAt = 0; quizStopped(); }
     else {
@@ -1841,6 +1939,7 @@ Kurallar:
     resetGate();
     if (session.paused && session.ready) rawSend(session.ws, { realtimeInput: { audioStreamEnd: true } });
     els.pause.textContent = session.paused ? "Devam et" : "Duraklat";
+    mediaSessionState();
     listeningState();
   };
   els.check.onclick = () => { if (session.paused) els.pause.onclick(); sendText(CHECK_TEXT); };
@@ -1848,7 +1947,7 @@ Kurallar:
   // Sayfa kapanırken bağlantıyı kapat; kapanış "koptu, yeniden bağlan" sanılıp boşuna yeni oturum açılmasın
   window.addEventListener("beforeunload", () => { saveLecture(); if (session.ws) try { session.ws.onclose = null; session.ws.close(1000); } catch {} });
   // Tablette sayfadan çıkarken (başka uygulamaya geçme, sekmeyi kapatma, ekran kilidi) son durumu hemen kaydet
-  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") saveLecture(); });
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") bgLeave(); else bgReturn(); });
   window.addEventListener("pagehide", () => saveLecture());
 
   // Açılışta kayıtlı ders ve sorular varsa geri getir
@@ -1857,7 +1956,7 @@ Kurallar:
   renderMode();
 
   // Test kancası (yalnızca ?ws= ile açıldığında)
-  if (WS_OVERRIDE) window.__tus = { session, notes, log, cfg, audio, gate, barge, lecture, quiz, qlog, mode: () => mode };
+  if (WS_OVERRIDE) window.__tus = { session, notes, log, cfg, audio, gate, barge, lecture, quiz, qlog, keep, bg, mode: () => mode };
 })();
 </script>
 </body>
