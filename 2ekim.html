@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>TUS Dinleyici</title>
+<title>TUS Dinleyici · 2 Ekim sürümü (karşılaştırma)</title>
+<meta name="robots" content="noindex">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600&family=Figtree:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -173,6 +174,7 @@ a { color: var(--hema); }
 </head>
 <body>
 <div class="wrap">
+  <div style="margin:0 0 14px;padding:10px 14px;border-radius:10px;background:#fde68a;color:#422006;font:600 14px/1.45 system-ui,sans-serif">Karşılaştırma sayfası · 2 Ekim sürümü: söze girme güncellemesinden önceki sürüm (soru modu ve ekran kilidi desteği var). Notlar burada ayrı tutulur, asıl sayfadakilere dokunulmaz. <a href="https://mehmetsevketkaya2-ai.github.io/tus-dinleyici/" style="color:inherit">Güncel sürüme dön</a></div>
   <header>
     <h1>TUS Dinleyici <small id="tagline">Siz anlatın, o dinlesin. Yalnızca önemli bir eksik ya da yanlış olduğunda konuşur.</small></h1>
     <div class="clock" id="clock" aria-label="Süre">00:00</div>
@@ -330,7 +332,6 @@ a { color: var(--hema); }
         <div class="field" style="margin-top:10px">
           <textarea id="prompt" spellcheck="false" aria-label="Talimat"></textarea>
           <div class="row"><button class="small" id="resetPrompt" type="button">Varsayılana dön</button><span class="hint" id="promptStatus"></span></div>
-          <span class="hint">Bu talimata her zaman kısa bir not eklenir: dinleyici benzer sesli bir terimi (kromofob / kromofil gibi) yanlış duymuş olabileceğinde “yanlış” demez, ne duyduğunu sorar.</span>
         </div>
       </details>
 
@@ -338,8 +339,6 @@ a { color: var(--hema); }
         <span><b>Kulaklık kullanın.</b> Hoparlörden çıkan ses mikrofona geri dönerse dinleyici kendi sesini sizin sözünüz sanabilir.</span>
         <span>Mikrofon izni sorulursa <b>İzin ver</b>'e basın. Sayfayı Chrome ya da Edge ile açın.</span>
       </div>
-      <div class="hint" style="margin-top:14px">Sürüm: 4 Ekim 2026. Karşılaştırmak için eski sürümler: <a href="https://mehmetsevketkaya2-ai.github.io/tus-dinleyici/2ekim.html">2 Ekim</a> · <a href="https://mehmetsevketkaya2-ai.github.io/tus-dinleyici/1ekim.html">1 Ekim</a></div>
-      <div class="hint" id="diag"></div>
     </details>
   </section>
 </div>
@@ -373,11 +372,6 @@ Bu dört durumun dışında her seferinde yalnızca tek bir kelime söyle: "Tama
 Aday "bitti" dediğinde ya da senden eksikleri istediğinde, anlatımda atlanan en önemli noktaları en fazla beş kısa madde olarak söyle.
 
 Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
-  // Benzer sesli terimler (kromofob/kromofil gibi) yanlış duyulabiliyor; o zaman dinleyici adayı haksız yere düzeltiyordu.
-  // Bu not hem hazır talimata hem kullanıcının düzenlediği talimata eklenir: emin olmadığı terimde "yanlış" demez, ne duyduğunu sorar.
-  const HEARING_NOTE = `Sesi her zaman kusursuz duyamazsın; benzer sesli tıp terimlerini birbirine karıştırabilirsin: kromofob/kromofil, hipo-/hiper-, aferent/eferent, abdüksiyon/addüksiyon, -oz/-it gibi. Bir uyarın yalnızca böyle bir terime dayanıyorsa adayın yanlış söylediğini varsayma ve "yanlış" deme: önce ne duyduğunu sor, ardından doğrusunu tek cümleyle söyle. Örnek: "Kromofil mi dediniz? Sayıca en çok olan kromofoblardır." Soru sormama kuralının tek istisnası budur. Aday "kromofob dedim" gibi netleştirirse yalnızca "Tamam" de; oturumun devamında o terimi öyle anla ve aynı terim için bir daha sorma.`;
-  // Notlara yalnızca bilgi yazılır: baştaki "… mi dediniz?" sorusu nota alınmaz
-  const HEARD_Q = /^[^.!?…]{0,90}\b(dediniz|dedin|demiştiniz|söylediniz|demek istediniz)(\s*,?\s*(değil\s+)?m[ıiuü])?\s*\?\s*/iu;
   const CHECK_TEXT = "Şu ana kadar anlattıklarımda kritik bir yanlış ya da TUS için önemli bir eksik var mı? Varsa en fazla iki kısa cümleyle söyle, yoksa sadece \"eksik yok\" de.";
   const DONE_TEXT = "Anlatımım bitti. Atladığım en önemli noktaları en fazla beş kısa madde olarak söyle.";
   // Her zaman susturulan işaret ve dolgu sözleri ("Tamam" talimattaki "söyleyecek bir şeyim yok" işaretidir)
@@ -413,10 +407,12 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
   const $ = (id) => document.getElementById(id);
   const params = new URLSearchParams(location.search);
   const WS_OVERRIDE = /^ws:\/\/(127\.0\.0\.1|localhost)(:\d+)?\//.test(params.get("ws") || "") ? params.get("ws") : null; // yalnızca yerel test için
+  // Karşılaştırma sayfası: notlar ve kayıtlı ders ayrı tutulur; anahtar ve ayarlar asıl sayfadan alınır
+  try { ["key", "silence", "voice", "model", "topic", "prompt6", "levels", "qkey", "exmodel", "lockrun"].forEach(k => { const v = localStorage.getItem("tusd." + k); if (v !== null) localStorage.setItem("tusd2ekim." + k, v); else localStorage.removeItem("tusd2ekim." + k); }); } catch {}
   const store = {
-    get(k, d) { try { const v = localStorage.getItem("tusd." + k); return v === null ? d : v; } catch { return d; } },
-    set(k, v) { try { localStorage.setItem("tusd." + k, v); } catch {} },
-    del(k) { try { localStorage.removeItem("tusd." + k); } catch {} }
+    get(k, d) { try { const v = localStorage.getItem("tusd2ekim." + k); return v === null ? d : v; } catch { return d; } },
+    set(k, v) { try { localStorage.setItem("tusd2ekim." + k, v); } catch {} },
+    del(k) { try { localStorage.removeItem("tusd2ekim." + k); } catch {} }
   };
   // Yerel testte Google'ın yerine konan adresler (yalnızca ?ws= ile birlikte ve yalnızca bu bilgisayara)
   const localUrl = (v) => /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?(\/|$)/.test(v || "") ? v : null;
@@ -437,7 +433,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     qList: $("qList"), qTranscript: $("qTranscript"), qClear: $("qClear"),
     quizKey: $("quizKey"), quizKeyStatus: $("quizKeyStatus"), exModel: $("exModel"), lockRun: $("lockRun"),
     apiKey: $("apiKey"), keyStatus: $("keyStatus"), settings: $("settings"), silence: $("silence"), silenceOut: $("silenceOut"),
-    voice: $("voice"), model: $("model"), prompt: $("prompt"), promptStatus: $("promptStatus"), diag: $("diag")
+    voice: $("voice"), model: $("model"), prompt: $("prompt"), promptStatus: $("promptStatus")
   };
   const cfg = {
     key: store.get("key", ""),
@@ -512,7 +508,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
 
   function instruction() {
     if (isQuiz()) return quizInstruction();
-    const base = (cfg.customPrompt || DEFAULT_PROMPT) + "\n\n" + HEARING_NOTE;
+    const base = cfg.customPrompt || DEFAULT_PROMPT;
     const topic = els.topic.value.trim();
     return topic ? base + "\n\nBugünkü konu: " + topic + "." : base;
   }
@@ -684,7 +680,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
   }
 
   // ---------- Ses ----------
-  const audio = { ctx: null, stream: null, src: null, tap: null, micAn: null, outGain: null, outAn: null, nextT: 0, playing: new Set(), sched: [], held: [], paused: false, down: null, pending: [] };
+  const audio = { ctx: null, stream: null, src: null, tap: null, micAn: null, outGain: null, outAn: null, nextT: 0, playing: new Set(), down: null, pending: [] };
 
   function makeDownsampler(inRate) {
     const ratio = inRate / IN_RATE;
@@ -760,20 +756,6 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     audio.src.connect(tap); tap.connect(sink);
     audio.tap = tap; audio.sink = sink;
   }
-  // Ayarlar'ın altındaki tanılama satırı: bir sorun olduğunda hangi mikrofonla, hangi ayarlarla çalışıldığı görülsün
-  function diagUpdate() {
-    try {
-      const tr = audio.stream && audio.stream.getAudioTracks()[0];
-      const st = tr && tr.getSettings ? tr.getSettings() : {};
-      const khz = (v) => (Math.round(v / 100) / 10).toLocaleString("tr-TR") + " kHz";
-      const bits = ["mikrofon “" + ((tr && tr.label) || "adı bilinmiyor") + "”"];
-      if (st.sampleRate) bits.push("kayıt " + khz(st.sampleRate));
-      if (audio.ctx) bits.push("çalma " + khz(audio.ctx.sampleRate));
-      bits.push("yankı önleme " + (st.echoCancellation === false ? "kapalı" : "açık"), "gürültü bastırma " + (st.noiseSuppression === false ? "kapalı" : "açık"));
-      bits.push("basamak " + session.level, "kilit desteği " + (keep.on ? "açık" : "kapalı"));
-      els.diag.textContent = "Son başlatma: " + bits.join(" · ");
-    } catch {}
-  }
   function stopMic() {
     try { audio.src && audio.src.disconnect(); } catch {}
     try { audio.tap && audio.tap.disconnect(); } catch {}
@@ -793,66 +775,21 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     const buf = audio.ctx.createBuffer(1, n, rate);
     const ch = buf.getChannelData(0);
     for (let i = 0; i < n; i++) { let v = bin.charCodeAt(2 * i) | (bin.charCodeAt(2 * i + 1) << 8); if (v >= 32768) v -= 65536; ch[i] = v / 32768; }
-    if (audio.paused) audio.held.push({ buf, off: 0 });   // duraklatılmışken gelen parça sıraya eklenir
-    else scheduleBuf(buf, 0, false);
-    audio.played = (audio.played || 0) + 1;
-  }
-  // Çalma sırası: her parçanın başlangıç ve bitiş anı tutulur. Böylece söze girdiğinizde ses anında
-  // duraklatılabilir; kısa bir onaysa kaldığı yerin çeyrek saniye gerisinden sürdürülür.
-  const REWIND_SEC = 0.25;   // sürdürürken bu kadar geriden başlar (yarım kalan kelime baştan duyulsun)
-  const FADE_SEC = 0.02;     // dururken ve sürerken çıtlamasın diye kısa geçiş
-  function scheduleBuf(buf, off, fadeIn) {
-    const ctx = audio.ctx, now = ctx.currentTime;
-    if (off >= buf.duration - 0.001) return false;
-    while (audio.sched.length && audio.sched[0].end < now - 1) audio.sched.shift();   // çoktan çalınmış olanlar
-    const s = ctx.createBufferSource(), g = ctx.createGain();
-    s.buffer = buf; s.connect(g); g.connect(audio.outGain);
-    const t = Math.max(now + 0.04, audio.nextT);
-    if (fadeIn) { g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(1, t + FADE_SEC); }
-    s.start(t, off);
-    const e = { src: s, gain: g, buf, at: t, start: t - off, end: t - off + buf.duration };
-    audio.nextT = e.end;
-    audio.sched.push(e);
+    const s = audio.ctx.createBufferSource();
+    s.buffer = buf; s.connect(audio.outGain);
+    const t = Math.max(audio.ctx.currentTime + 0.04, audio.nextT);
+    s.start(t);
+    audio.nextT = t + buf.duration;
     audio.playing.add(s);
     s.onended = () => audio.playing.delete(s);
-    return true;
-  }
-  function hush(e, now) {
-    if (e.end <= now) return;   // zaten bitmiş
-    e.src.onended = null;
-    try {
-      if (e.at <= now) {        // çalıyor: kısa bir geçişle sustur
-        const p = e.gain.gain;
-        p.cancelScheduledValues(now); p.setValueAtTime(p.value, now); p.linearRampToValueAtTime(0, now + FADE_SEC);
-        e.src.stop(now + FADE_SEC + 0.005);
-      } else e.src.stop();      // sırası gelmemişti
-    } catch {}
-  }
-  // Söze girildi: çalmakta olan ve sırada bekleyen ses durdurulup saklanır
-  function pausePlayback() {
-    if (audio.paused || !audio.ctx) return;
-    const now = audio.ctx.currentTime, from = now - REWIND_SEC;
-    const held = [];
-    for (const e of audio.sched) {
-      if (e.end <= from) continue;
-      held.push({ buf: e.buf, off: Math.max(0, from - e.start) });
-      hush(e, now);
-    }
-    audio.sched = []; audio.playing.clear(); audio.nextT = 0;
-    audio.held = held; audio.paused = true;
-  }
-  function resumePlayback() {
-    if (!audio.paused) return;
-    const held = audio.held;
-    audio.held = []; audio.paused = false;
-    let first = true;   // ilk çalınan parça yumuşak başlar
-    held.forEach(h => { if (scheduleBuf(h.buf, h.off, first)) first = false; });
+    audio.played = (audio.played || 0) + 1;
   }
   function stopPlayback() {
-    if (audio.ctx) { const now = audio.ctx.currentTime; audio.sched.forEach(e => hush(e, now)); }
-    audio.sched = []; audio.playing.clear(); audio.held = []; audio.paused = false; audio.nextT = 0;
+    audio.playing.forEach(s => { try { s.stop(); } catch {} });
+    audio.playing.clear();
+    audio.nextT = 0;
   }
-  function palSpeaking() { return !!audio.ctx && (audio.playing.size > 0 || audio.nextT > audio.ctx.currentTime || (audio.paused && audio.held.length > 0)); }
+  function palSpeaking() { return audio.ctx && (audio.playing.size > 0 || audio.nextT > audio.ctx.currentTime); }
 
   // ---------- Sessizlikte ses göndermeme ----------
   // Siz konuşmazken ses Google'a gitmez: kota harcanmaz, konuşma da birikmez.
@@ -862,55 +799,19 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
   const PRE_ROLL_CHUNKS = Math.ceil(1200 / CHUNK_MS);   // ~1,2 sn
   const FLOOR_WIN = Math.ceil(8000 / CHUNK_MS);        // gürültü tabanı için son ~8 sn
   const gate = { sending: false, ring: [], quietMs: 0, hot: 0, levels: [] };
-  // Dinleyici konuşurken söze girme:
-  // - Sesiniz duyulur duyulmaz (ONSET_MS) dinleyici duraklar; Google'ın "sözü kesildi" demesi beklenmez.
-  // - Kısa bir onaysa ("hı hı", "evet", "aynen öyle": BARGE_MS'den kısa) sesiniz gönderilmez, dinleyici kaldığı yerden sürer.
-  // - BARGE_MS'den uzun konuşursanız sözünüz başından itibaren gönderilir; dinleyici duraklamış bekler.
-  //   Google "sözü kesildi" derse (ya da sözünü çoktan bitirmişse) tamamen susar; demezse (söz değil gürültüydü)
-  //   siz susunca kaldığı yerden sürer. Yani susturma anında olur, kesin kararı yine Google verir.
-  // - Eşiği ancak aşan kısık sesler (hoparlörden sızan yankı, uzaktaki konuşma) dinleyiciyi duraklatmaz;
-  //   uzun sürerse eskisi gibi yalnızca gönderilir.
+  // Dinleyici konuşurken: "hı hı", "evet", "aynen öyle" gibi kısa onaylar gönderilmez (dinleyici cümlesini bitirir).
+  // BARGE_MS'den uzun konuşursanız sözünüzün başından itibaren gönderilir ve dinleyici susar.
   const BARGE_MS = 1500;                               // "hı hı", "evet", "aynen öyle" bunun altında kalır
   const BARGE_GAP_MS = 350;                             // hece arası boşluk sayılan en uzun sessizlik
-  const ONSET_MS = 190;                                 // bu kadar söz duyulunca dinleyici duraklar
-  const RESUME_GAP_MS = 500;                            // duraklamışken bu kadar sessizlik olursa kaldığı yerden sürer
-  const MAX_MISSES = 2;                                 // bir konuşmada en fazla bu kadar boş yere duraklar
-  const VERDICT_MS = 2000;                              // sözünüz gönderildikten sonra Google'ın kararı en az bu kadar beklenir
   // Soru modunda cevaplar kısadır ("C şıkkı", "geç"): yarım saniyelik söz araya girmeye yeter,
   // tabak tıkırtısı gibi anlık sesler ise yetmez. Sustuktan 1 sn sonra cevap bitmiş sayılır.
   const QUIZ_BARGE_MS = 500;
   const QUIZ_SILENCE = 1.0;
   function bargeMs() { return isQuiz() ? QUIZ_BARGE_MS : BARGE_MS; }
   function silenceSec() { return isQuiz() ? QUIZ_SILENCE : cfg.silence; }
-  const barge = { pre: [], buf: [], speechMs: 0, quietMs: 0, loud: 0, onset: false, active: false, live: false, idle: 0, wait: 0, misses: 0, penalty: 0, clean: 0 };
-  function bargeClear() { barge.pre = []; barge.buf = []; barge.speechMs = 0; barge.quietMs = 0; barge.loud = 0; barge.onset = false; }
-  function resetBarge() { bargeClear(); barge.active = false; barge.live = false; barge.idle = 0; barge.wait = 0; barge.misses = 0; if (audio.paused) resumePlayback(); }
+  const barge = { pre: [], buf: [], speechMs: 0, quietMs: 0, active: false };
+  function resetBarge() { barge.pre = []; barge.buf = []; barge.speechMs = 0; barge.quietMs = 0; barge.active = false; }
   function resetGate() { gate.sending = false; gate.ring = []; gate.quietMs = 0; gate.hot = 0; resetBarge(); }
-  // Söz kısa sürdü: bir onay ya da bir gürültüydü. Dinleyici duraklatıldıysa kaldığı yerden sürer.
-  function bargeMiss() {
-    if (barge.onset) barge.misses++;
-    bargeClear();
-    if (audio.paused) { resumePlayback(); if (palSpeaking()) speakingState(); }
-  }
-  // Sözünüz gönderildi ama Google "sözü kesildi" demedi (söz değil gürültüydü ya da fark etmedi):
-  // siz susunca dinleyici kaldığı yerden sürer, gönderim kapatılır.
-  function bargeUnconfirmed() {
-    barge.wait = 0; barge.active = false; barge.misses++;
-    gate.sending = false; gate.ring = []; gate.quietMs = 0; gate.hot = 0;
-    if (session.ready) rawSend(session.ws, { realtimeInput: { audioStreamEnd: true } });
-    resumePlayback();
-    if (palSpeaking()) speakingState();
-  }
-  // Dinleyicinin sözü bitti ya da kesildi. Bu söz sırasında boş yere çok duraklandıysa (gürültülü ortam,
-  // hoparlörden mikrofona sızan ses) sonraki sözlerde daha az duraklar; ortam sakinleşince eski hâline döner.
-  function bargeEnd() {
-    if (barge.misses >= MAX_MISSES) { barge.penalty = Math.min(MAX_MISSES, barge.penalty + 1); barge.clean = 0; }
-    else if (barge.misses) barge.clean = 0;
-    else if (++barge.clean >= 2) { barge.penalty = Math.max(0, barge.penalty - 1); barge.clean = 0; }
-    barge.live = false; barge.idle = 0; barge.misses = 0; barge.wait = 0;
-    bargeClear();
-    if (audio.paused) resumePlayback();
-  }
   // Ortam gürültüsü = son 8 sn'nin en sessiz %5'lik dilimi. Konuşmada kelime aralarındaki boşluklar
   // bu dilime düşer; sabit bir gürültü (fan, klima) ise kendisi taban olur ve konuşma sayılmaz.
   function noiseFloor() {
@@ -920,48 +821,27 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
   function gateChunk(b64, level) {
     gate.levels.push(level);
     if (gate.levels.length > FLOOR_WIN) gate.levels.shift();
-    if (session.paused) return;   // duraklatılmışken ses gönderilmez, dinleyicinin sözü de kesilmez
     const thr = Math.max(0.008, noiseFloor() * 3);
     const speech = level > thr;
-    if (barge.wait) {
-      // Sözünüz gönderildi; dinleyici duraklamış, Google'ın kararını bekliyor
-      barge.quietMs = speech ? 0 : barge.quietMs + CHUNK_MS;
-      if (!audio.paused) barge.wait = 0;   // Google "sözü kesildi" dedi
-      else if (barge.quietMs >= RESUME_GAP_MS && Date.now() - barge.wait >= VERDICT_MS) bargeUnconfirmed();
-    }
-    if (!palSpeaking()) {
-      // Dinleyici sustu. Ses akışındaki anlık boşluk söz bitti sayılmasın diye ~0,3 sn beklenir.
-      barge.active = false;
-      if (barge.live && ++barge.idle >= 5) bargeEnd();
-    } else if (!barge.active) {
+    if (!palSpeaking()) barge.active = false;
+    else if (!barge.active) {
       // Dinleyici konuşuyor: sesinizi beklet, kısa onayları at
-      barge.live = true; barge.idle = 0;
       gate.sending = false; gate.quietMs = 0; gate.hot = 0;
       if (speech) {
         if (!barge.buf.length) barge.pre = gate.ring.slice(-6);   // sözün hemen öncesi (~0,4 sn)
         barge.buf.push(b64); barge.speechMs += CHUNK_MS; barge.quietMs = 0;
-        if (level > thr * 2) barge.loud++;
       } else if (barge.buf.length) {
         barge.buf.push(b64); barge.quietMs += CHUNK_MS;
-        if (barge.quietMs > (audio.paused ? RESUME_GAP_MS : BARGE_GAP_MS)) bargeMiss();
+        if (barge.quietMs > BARGE_GAP_MS) { barge.pre = []; barge.buf = []; barge.speechMs = 0; barge.quietMs = 0; }
       }
       gate.ring.push(b64);
       if (gate.ring.length > PRE_ROLL_CHUNKS) gate.ring.shift();
-      if (!barge.onset && barge.speechMs >= ONSET_MS && barge.loud >= 2) {
-        // Söze başladınız: dinleyici hemen duraklar. Kısık sesler (sızan yankı, uğultu) duraklatmaz.
-        barge.onset = true;
-        if (barge.misses + barge.penalty < MAX_MISSES) { pausePlayback(); setState("live", "Sizi dinliyor", isQuiz() ? "Cevabınızı söyleyin; kısa bir sesse okumayı sürdürür." : "Kısa bir onaysa kaldığı yerden sürdürür."); }
-      }
       if (barge.speechMs >= bargeMs()) {
-        // Gerçekten söze girdiniz: sözünüz baştan itibaren gönderilir.
+        // Gerçekten söze girdiniz: baştan itibaren gönder, dinleyici susacak
         barge.active = true;
-        const out = barge.pre.concat(barge.buf), clear = barge.onset;
-        bargeClear();
+        const out = barge.pre.concat(barge.buf);
+        barge.pre = []; barge.buf = []; barge.speechMs = 0; barge.quietMs = 0;
         gate.sending = true; gate.quietMs = 0; gate.ring = [];
-        // Google sözünü çoktan bitirmişse (çalınan, elimizde kalan sestir) "kesildi" demez: dinleyici burada susturulur.
-        // Hâlâ konuşuyorsa dinleyici duraklamış bekler; kararı Google verir (bkz. bargeUnconfirmed, onServer).
-        if (clear && !session.serverTurnOpen) abortTurn(true);
-        else if (audio.paused) barge.wait = Date.now();
         out.forEach(sendAudio);
       }
       return;
@@ -1105,7 +985,6 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
   function attach(ws) {
     session.ws = ws; session.ready = true; session.goAway = false; session.reconnecting = false;
     session.sentAudio = false;   // bu bağlantıda henüz ses gönderilmedi
-    session.serverTurnOpen = false;   // sunucu şu an konuşuyor mu (ses gönderdi, "bitti" ya da "kesildi" demedi)
     const buffered = session.buffer; session.buffer = [];
     if (buffered.length) session.sentAudio = true;
     buffered.forEach(b64 => rawSend(ws, { realtimeInput: { audio: { data: b64, mimeType: "audio/pcm;rate=16000" } } }));
@@ -1155,19 +1034,14 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
         if (session.dialogChars > DIALOG_MAX_CHARS) session.dialogOpen = false;   // konu anlatımına döndünüz
       }
     }
-    if (sc.interrupted) { session.serverTurnOpen = false; abortTurn(true); }
+    if (sc.interrupted) abortTurn(true);
     if (sc.modelTurn && Array.isArray(sc.modelTurn.parts)) {
       for (const p of sc.modelTurn.parts) {
-        if (p.inlineData && p.inlineData.data && /audio/.test(p.inlineData.mimeType || "audio/pcm")) { session.serverTurnOpen = true; palAudio(p.inlineData.data, p.inlineData.mimeType); }
+        if (p.inlineData && p.inlineData.data && /audio/.test(p.inlineData.mimeType || "audio/pcm")) palAudio(p.inlineData.data, p.inlineData.mimeType);
       }
     }
     if (sc.outputTranscription && sc.outputTranscription.text) palText(sc.outputTranscription.text);
-    if (sc.turnComplete) {
-      session.serverTurnOpen = false;
-      // Söze girmiştiniz, dinleyici duraklamış Google'ın kararını bekliyordu; Google sözünü bitirdi, artık "kesildi" demez
-      if (barge.wait && audio.paused) abortTurn(true);
-      turnDone();
-    }
+    if (sc.turnComplete) turnDone();
   }
 
   // ---------- Dinleyicinin cevabı: önce bekletilir, dolgu sözse hiç çalınmaz ----------
@@ -1219,7 +1093,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
       curMe = null; els.liveLine.textContent = "";
       t.entry = (isQuiz() ? qLog : addLog)("pal", t.text);
       session.uiSpeaking = true; session.thinkingSince = 0;
-      speakingState();
+      setState("speaking live", "Konuşuyor", isQuiz() ? "Cevabı biliyorsanız sözünü kesebilirsiniz." : "Söze girerseniz hemen susar.");
       t.queue.forEach(([b, m]) => { playChunk(b, m); t.playedSec += chunkSec(b, m); });
     }
     t.queue = [];
@@ -1261,10 +1135,8 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
       const text = t.entry.text.trim();
       if (!text && !interrupted && t.playedSec > 1.5 && session.level >= 4) addNote("(Sesli bir uyarı yaptı; bu modelde yazıya dökülemedi.)");
       else if (text && !isTrivial(text, false)) {
-        const said = stripMarks(stripDisclaimer(text)).replace(/\s+/g, " ").replace(/[\s,.;:!]*\b(devam et(ebilirsin)?|devam edebilirsin|devam)\s*[.!…]*\s*$/i, "").trim();
-        const clean = said.replace(HEARD_Q, "").trim();
-        // Yalnızca "… mi dediniz?" diye sorduysa ortada not edilecek bir bilgi yoktur
-        if (clean || !HEARD_Q.test(said)) addNote((clean || text) + (interrupted ? " …" : (/[.!?…]$/.test(clean) ? "" : ".")));
+        const clean = stripMarks(stripDisclaimer(text)).replace(/\s+/g, " ").replace(/[\s,.;:!]*\b(devam et(ebilirsin)?|devam edebilirsin|devam)\s*[.!…]*\s*$/i, "").trim();
+        addNote((clean || text) + (interrupted ? " …" : (/[.!?…]$/.test(clean) ? "" : ".")));
       }
       if (!text) { t.entry.el.remove(); const i = log.indexOf(t.entry); if (i >= 0) log.splice(i, 1); saveSoon(); }
     }
@@ -1274,9 +1146,6 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     if (t.play) { session.dialogOpen = true; session.dialogChars = 0; }
     else if (t.decided) session.dialogOpen = false;
     if (!palSpeaking()) { session.thinkingSince = 0; listeningState(); }
-  }
-  function speakingState() {
-    setState("speaking live", "Konuşuyor", isQuiz() ? "Cevabı biliyorsanız sözünü kesebilirsiniz." : "Söze girerseniz hemen susar.");
   }
   function listeningState() {
     if (!session.running) return;
@@ -2012,7 +1881,7 @@ Kurallar:
     let resumed = false;
     if (isQuiz()) quizBegin(plan, fresh === "wrong");
     else { resumed = !fresh && hasLecture(); if (!resumed) clearLecture(); }
-    Object.assign(session, { running: true, paused: false, ready: false, handle: null, level: levelFor(cfg.model), startedAt: Date.now(), reconnecting: false, buffer: [], textVia: "realtime", lastTextSent: null, retryText: null, levelNoted: false, uiSpeaking: false, thinkingSince: 0, contextLost: false, expectingAnswer: false, userTail: "", dialogOpen: false, dialogChars: 0, serverTurnOpen: false });
+    Object.assign(session, { running: true, paused: false, ready: false, handle: null, level: levelFor(cfg.model), startedAt: Date.now(), reconnecting: false, buffer: [], textVia: "realtime", lastTextSent: null, retryText: null, levelNoted: false, uiSpeaking: false, thinkingSince: 0, contextLost: false, expectingAnswer: false, userTail: "", dialogOpen: false, dialogChars: 0 });
     resetGate();
     setState("live", "Bağlanıyor", "Birkaç saniye sürebilir.");
     session.reconnecting = true; // bağlanırken söylenenler bekletilsin
@@ -2038,7 +1907,6 @@ Kurallar:
     }
     mediaSessionState();
     requestWakeLock();
-    diagUpdate();
   }
   function stop(fromError) {
     const was = session.running;
