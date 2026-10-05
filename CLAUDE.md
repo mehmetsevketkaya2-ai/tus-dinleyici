@@ -25,3 +25,17 @@ kendi cihazında görebilir.
 
 Geri alınan değişiklikler git geçmişinde duruyor (`803ebc1` … `fab7632`). Yeniden istenirse oradan,
 tek tek ve deneme sayfası üzerinden alınır.
+
+## Deneme sayfası nasıl kurulur
+
+`deneme.html` = `index.html` + denenen tek değişiklik + şunlar: üstte sarı deneme şeridi, ayrı kayıt öneki
+(`tusddeneme.`). Anahtar ve ayarları her açılışta asıl sayfanın kayıtlarından (`tusd.`) okur; notları her yeni
+denemede bir kez kopyalar. Asıl sayfanın kayıtlarına hiçbir zaman yazmaz.
+
+## Durum
+
+- 6 Ekim 2026: `deneme.html` üzerinde **1-notlar** deneniyor (Notlar bölümünde yalnızca en son not, tek satır;
+  "Tümünü göster" ile açılır). Kullanıcının "tamam" demesi bekleniyor; denince aynı değişiklik `index.html`
+  dosyasına geçer.
+- Sırada, yine tek tek: kısa takip sorularına cevap ("Paratiroid peki?"); "Nerede kalmıştık?" sorusunda kalınan
+  konuyu söylemesi ("Kaldığın yerden devam et" ile sürdürüldüğünde de; "Yeni ders"te unutur).
