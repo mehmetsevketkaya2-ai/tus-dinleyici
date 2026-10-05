@@ -301,7 +301,9 @@ a { color: var(--hema); }
             <option value="Charon">Charon — bilgilendirici, erkek</option>
             <option value="Orus">Orus — kararlı, erkek</option>
             <option value="Puck">Puck — neşeli, erkek</option>
+            <option value="Schedar">Schedar — dengeli, erkek</option>
           </select>
+          <div class="row" style="margin-top:8px"><button class="small" id="voiceTry" type="button">Sesi dene</button><span class="hint" id="voiceTryNote" aria-live="polite">Seçili ses bir Türkçe cümle söyler. Oturumdaki gibi duyulsun diye mikrofon da o sırada açılır; sesiniz gönderilmez.</span></div>
           <label for="model" style="margin-top:10px">Model</label>
           <select id="model">
             <option value="gemini-3.8-live">Gemini 3.8 Live (önerilen)</option>
@@ -467,7 +469,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     qList: $("qList"), qTranscript: $("qTranscript"), qClear: $("qClear"),
     quizKey: $("quizKey"), quizKeyStatus: $("quizKeyStatus"), exModel: $("exModel"), lockRun: $("lockRun"),
     apiKey: $("apiKey"), keyStatus: $("keyStatus"), settings: $("settings"), silence: $("silence"), silenceOut: $("silenceOut"),
-    voice: $("voice"), model: $("model"), prompt: $("prompt"), promptStatus: $("promptStatus"), diag: $("diag"),
+    voice: $("voice"), model: $("model"), prompt: $("prompt"), promptStatus: $("promptStatus"), diag: $("diag"), voiceTry: $("voiceTry"), voiceTryNote: $("voiceTryNote"),
     notesToggle: $("notesToggle")
   };
   const cfg = {
@@ -522,7 +524,9 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
   $("showKey").onclick = (e) => { const shown = els.apiKey.type === "text"; els.apiKey.type = shown ? "password" : "text"; e.target.textContent = shown ? "Göster" : "Gizle"; };
   $("forgetKey").onclick = () => { cfg.key = ""; store.del("key"); els.apiKey.value = ""; renderSettings(); };
   els.silence.oninput = () => { cfg.silence = parseFloat(els.silence.value); store.set("silence", String(cfg.silence)); els.silenceOut.textContent = fmtSec(cfg.silence) + " sn"; };
-  els.voice.onchange = () => { cfg.voice = els.voice.value; store.set("voice", cfg.voice); };
+  // Modelin kabul etmediği bir ses seçilmişse sayfa daha sade bir kuruluma (ses seçimi ve Türkçe döküm ipucu olmadan) inmiş
+  // olabilir. Ses değişince en iyi kurulum yeniden denenir; yoksa sayfa yenilenene kadar sade kurulumda kalırdı.
+  els.voice.onchange = () => { cfg.voice = els.voice.value; store.set("voice", cfg.voice); loadLevels(); };
   els.model.onchange = () => { cfg.model = els.model.value; store.set("model", cfg.model); };
   els.topic.onchange = () => { cfg.topic = els.topic.value.trim(); store.set("topic", cfg.topic); };
   els.prompt.onchange = () => {
@@ -764,6 +768,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
   async function startMic() {
     audio.stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
     const track = audio.stream.getAudioTracks()[0];
+    audio.micLabel = (track && track.label) || "";
     if (track) {
       track.onmute = () => { if (document.visibilityState === "hidden") bg.muted = true; };   // ekran kapalıyken telefon mikrofonu susturdu
       track.onended = () => { if (session.running) bg.ended = true; };                        // telefon mikrofonu tamamen bıraktırdı
@@ -814,6 +819,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
       if (audio.ctx) bits.push("çalma " + khz(audio.ctx.sampleRate));
       bits.push("yankı önleme " + (st.echoCancellation === false ? "kapalı" : "açık"), "gürültü bastırma " + (st.noiseSuppression === false ? "kapalı" : "açık"));
       bits.push("basamak " + session.level, "kilit desteği " + (keep.on ? "açık" : "kapalı"));
+      if (audio.inputs && audio.inputs.length) bits.push("görünen mikrofonlar: " + audio.inputs.join(", "));
       // Gecikme nerede? Google'ın cevap süresi (sustuğunuz andan ilk sese; bekleme ayarı dahil) ve sayfanın çalmadan önceki bekletmesi
       const sn = (ms) => fmtSec(ms / 1000) + " sn";
       if (stats.lagN) bits.push("cevap gecikmesi ort. " + sn(stats.lagSum / stats.lagN) + ", en çok " + sn(stats.lagMax) + " (" + stats.lagN + " cevap)");
@@ -1120,10 +1126,14 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
   const workingLevel = new Map(); // model -> kabul edilen kurulum basamağı
   // "Tam sessizlik desteklenmiyor" bulgusu 7 gün hatırlanır: her açılışta reddedilecek bir bağlantı denenmez.
   // Daha ileri basamaklar yalnızca bu sayfa açıkken geçerlidir (tek seferlik bir hata haftalarca sadeleştirmesin).
-  try {
-    const saved = JSON.parse(store.get("levels", "{}")) || {};
-    for (const [m, v] of Object.entries(saved)) if (v && v.level === 1 && Date.now() - v.at < 7 * 864e5) workingLevel.set(m, 1);
-  } catch {}
+  function loadLevels() {
+    workingLevel.clear();
+    try {
+      const saved = JSON.parse(store.get("levels", "{}")) || {};
+      for (const [m, v] of Object.entries(saved)) if (v && v.level === 1 && Date.now() - v.at < 7 * 864e5) workingLevel.set(m, 1);
+    } catch {}
+  }
+  loadLevels();
   function rememberLevel(model, level) {
     workingLevel.set(model, level);
     try {
@@ -2153,11 +2163,121 @@ Kurallar:
     else sysLog("Ekran kapalıyken " + fmtClock(dur) + " boyunca çalışmaya devam etti.");
   }
 
+  // ---------- Sesi dene ----------
+  // Ayarlar'da seçili sesi, oturum başlatmadan dinletir: Google'a kısa bir bağlantı açılır ve seçili model, seçili
+  // sesle tek bir Türkçe cümle söyler. Mikrofon da o sırada açık tutulur ama sesi hiçbir yere gönderilmez:
+  // Bluetooth kulaklık mikrofon açıkken sesi arama kanalından verir; böylece ses, oturumda duyulacağı gibi duyulur.
+  const TRY_TEXT = "Bu sesi deniyorsunuz. Paratiroid hormonu kan kalsiyumunu yükseltir; kalsitonin ise düşürür.";
+  const TRY_HINT = "Seçili ses bir Türkçe cümle söyler. Oturumdaki gibi duyulsun diye mikrofon da o sırada açılır; sesiniz gönderilmez.";
+  const tryVoice = { busy: false, id: 0, ws: null, ctx: null, mic: null, timer: 0, nextT: 0, sec: 0, voice: "" };
+  function tryNote(text) { els.voiceTryNote.textContent = text; }
+  function tryEnd(note) {
+    const t = tryVoice;
+    t.busy = false; t.id++;
+    clearTimeout(t.timer);
+    if (t.ws) { const ws = t.ws; t.ws = null; try { ws.onclose = ws.onmessage = null; ws.close(1000); } catch {} }
+    if (t.mic) { t.mic.getTracks().forEach(x => x.stop()); t.mic = null; }
+    if (t.ctx) { const c = t.ctx; t.ctx = null; try { c.close(); } catch {} }
+    els.voiceTry.textContent = "Sesi dene";
+    tryNote(note === undefined ? TRY_HINT : note);
+  }
+  function tryPlay(b64, mime) {
+    const t = tryVoice, ctx = t.ctx;
+    if (!ctx) return;
+    const m = /rate=(\d+)/.exec(mime || ""), rate = m ? parseInt(m[1], 10) : OUT_RATE;
+    const bin = atob(b64), n = bin.length >> 1;
+    if (!n) return;
+    const buf = ctx.createBuffer(1, n, rate), ch = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) { let v = bin.charCodeAt(2 * i) | (bin.charCodeAt(2 * i + 1) << 8); if (v >= 32768) v -= 65536; ch[i] = v / 32768; }
+    const s = ctx.createBufferSource(); s.buffer = buf; s.connect(ctx.destination);
+    t.nextT = Math.max(ctx.currentTime + 0.08, t.nextT);
+    s.start(t.nextT); t.nextT += buf.duration; t.sec += buf.duration;
+  }
+  function tryStart() {
+    const t = tryVoice;
+    if (t.busy) { tryEnd("Durduruldu."); return; }   // çalarken düğme "Durdur"dur
+    if (session.running) { tryNote("Önce oturumu durdurun; ses, oturum kapalıyken denenir."); return; }
+    if (!keyNow() && !WS_OVERRIDE) { tryNote("Önce API anahtarını girin."); els.apiKey.focus(); return; }
+    hideAlert();
+    const id = ++t.id, voice = els.voice.value;
+    Object.assign(t, { busy: true, nextT: 0, sec: 0, voice, micLabel: "" });
+    els.voiceTry.textContent = "Durdur";
+    tryNote("Bağlanıyor…");
+    // Ses bağlamı düğmeye basılmışken açılır (tarayıcı sesi ancak böyle çaldırır)
+    try { const AC = window.AudioContext || window.webkitAudioContext; t.ctx = new AC(); t.ctx.resume().catch(() => {}); }
+    catch { tryEnd("Bu tarayıcı ses çalamıyor."); return; }
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true } }).then(st => {
+        if (t.id !== id || !t.ctx) { st.getTracks().forEach(x => x.stop()); return; }
+        t.mic = st; t.micLabel = (st.getAudioTracks()[0] && st.getAudioTracks()[0].label) || "";
+        try { t.ctx.createMediaStreamSource(st).connect(t.ctx.createAnalyser()); } catch {}   // açık duran ama hiçbir yere gitmeyen mikrofon hattı
+      }).catch(() => {});   // izin verilmezse ses yine çalınır (kulaklıkta oturumdakinden biraz farklı duyulabilir)
+    }
+    t.timer = setTimeout(() => { if (t.id === id) tryEnd("Cevap gelmedi; biraz sonra yeniden deneyin."); }, 20000);
+    // Çalma bitince (ya da ses hiç gelmediyse) deneme kapanır
+    const finish = (ms) => {
+      clearTimeout(t.timer);
+      t.timer = setTimeout(() => { if (t.id === id) tryEnd(t.sec > 0 ? "Bu, “" + voice + "” sesiydi. Başka bir ses seçip yeniden deneyebilirsiniz." + (t.micLabel ? " (Açılan mikrofon: “" + t.micLabel + "”.)" : "") : "Ses gelmedi; yeniden deneyin."); }, ms);
+    };
+    const left = () => (t.ctx ? Math.max(0, t.nextT - t.ctx.currentTime) * 1000 : 0);
+    const connect = (via) => {
+      let ws, ready = false, sentAt = 0, got = false;
+      try { ws = new WebSocket(WS_OVERRIDE || (LIVE_URL + "?key=" + encodeURIComponent(keyNow()))); }
+      catch (e) { tryEnd("Google'a bağlanılamadı."); return; }
+      ws.binaryType = "arraybuffer"; t.ws = ws;
+      ws.onopen = () => ws.send(JSON.stringify({ setup: {
+        model: "models/" + cfg.model,
+        generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } } },
+        systemInstruction: { parts: [{ text: "Sana yazıyla verilen cümleyi Türkçe olarak, aynen ve başka hiçbir şey eklemeden seslendir." }] }
+      } }));
+      ws.onmessage = (ev) => {
+        if (t.id !== id) return;
+        const msg = parse(ev.data);
+        if (!msg) return;
+        if (!ready && msg.setupComplete !== undefined) {
+          ready = true; sentAt = Date.now();
+          const text = "Şunu aynen söyle: “" + TRY_TEXT + "”";
+          ws.send(JSON.stringify(via === "client" ? { clientContent: { turns: [{ role: "user", parts: [{ text }] }], turnComplete: true } } : { realtimeInput: { text } }));
+          tryNote("Cevap bekleniyor…");
+          return;
+        }
+        const sc = msg.serverContent;
+        if (!sc) return;
+        if (sc.modelTurn && Array.isArray(sc.modelTurn.parts)) {
+          for (const p of sc.modelTurn.parts) {
+            if (p.inlineData && p.inlineData.data && /audio/.test(p.inlineData.mimeType || "audio/pcm")) {
+              if (!got) tryNote("“" + voice + "” konuşuyor…");
+              got = true; tryPlay(p.inlineData.data, p.inlineData.mimeType);
+              finish(left() + 4000);   // "tur bitti" hiç gelmezse de çalma bitince kapanır
+            }
+          }
+        }
+        if (sc.turnComplete) finish(left() + 300);
+      };
+      ws.onclose = (ev) => {
+        if (t.id !== id || t.ws !== ws) return;
+        t.ws = null;
+        if (got) return;   // ses geldi: çalma bitince deneme kendiliğinden kapanır
+        // Bazı modeller yazıyı öbür yoldan ister: bir kez o yolla denenir
+        if (ready && via === "realtime" && Date.now() - sentAt < 3000 && /text|realtime_input|client_content/i.test(ev.reason || "")) { connect("client"); return; }
+        const kind = classify(ev.code, ev.reason);
+        showAlert(kind === "config"
+          ? "<b>Seçili model bu sesi kabul etmedi.</b> Başka bir ses ya da model deneyin." + (ev.reason ? "<br><span class=\"hint\">Google'ın yanıtı: " + escapeHtml(ev.reason) + "</span>" : "")
+          : explain(kind, ev.reason));
+        tryEnd("Deneme yapılamadı.");
+      };
+      ws.onerror = () => {};
+    };
+    connect("realtime");
+  }
+  els.voiceTry.onclick = tryStart;
+
   // ---------- Düğmeler ----------
   // fresh = "Yeni ders": notlar, döküm ve süre silinip baştan başlanır.
   // Aksi hâlde kayıtlı bir ders varsa kaldığı yerden sürer; Google tarafında her başlatma yeni ve boş bir oturumdur.
   // Soru modunda: fresh === "wrong" yalnızca yanlış yapılan ve geçilen soruları sorar.
   async function start(fresh) {
+    if (tryVoice.busy) tryEnd();   // süren bir ses denemesi varsa kapanır
     hideAlert();
     if (!keyNow() && !WS_OVERRIDE) {
       els.settings.open = true; els.apiKey.focus();
@@ -2214,12 +2334,21 @@ Kurallar:
       quizKick();
     } else {
       els.check.disabled = els.done.disabled = false;
+      // Ses kulaklıktan gelmiyorsa ilk bakılacak yer: tarayıcı hangi mikrofonu açtı? (Bluetooth kulaklığın mikrofonu
+      // açılamadıysa tablet kendi mikrofonuna ve hoparlörüne döner.)
+      addLog("sys", "Mikrofon: “" + (audio.micLabel || "adı bilinmiyor") + "”.");
       if (resumed) addLog("sys", "Kaldığınız yerden devam (" + elapsed() + "). Dinleyici yeni bir oturumla başladı: " + (els.topic.value.trim() ? "konuyu biliyor, " : "") + "önceki anlatımı hatırlamıyor.");
       else addLog("sys", "Oturum başladı" + (els.topic.value.trim() ? ": " + els.topic.value.trim() : "") + ".");
     }
     mediaSessionState();
     requestWakeLock();
     diagUpdate();
+    try {
+      navigator.mediaDevices.enumerateDevices().then(list => {
+        audio.inputs = list.filter(d => d.kind === "audioinput" && d.deviceId !== "default" && d.deviceId !== "communications").map(d => "“" + (d.label || "adsız") + "”");
+        diagUpdate();
+      }).catch(() => {});
+    } catch {}
   }
   function stop(fromError) {
     const was = session.running;
@@ -2273,7 +2402,7 @@ Kurallar:
   renderMode();
 
   // Test kancası (yalnızca ?ws= ile açıldığında)
-  if (WS_OVERRIDE) window.__tus = { session, notes, log, cfg, audio, gate, barge, lecture, quiz, qlog, keep, bg, mode: () => mode };
+  if (WS_OVERRIDE) window.__tus = { session, notes, log, cfg, audio, gate, barge, lecture, quiz, qlog, keep, bg, tryVoice, mode: () => mode };
 })();
 </script>
 </body>
