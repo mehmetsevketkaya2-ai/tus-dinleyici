@@ -385,7 +385,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
   // Bu not hem hazır talimata hem kullanıcının düzenlediği talimata eklenir: emin olmadığı terimde "yanlış" demez, ne duyduğunu sorar.
   const HEARING_NOTE = `Sesi her zaman kusursuz duyamazsın; benzer sesli tıp terimlerini birbirine karıştırabilirsin: kromofob/kromofil, hipo-/hiper-, aferent/eferent, abdüksiyon/addüksiyon, -oz/-it gibi. Bir uyarın yalnızca böyle bir terime dayanıyorsa adayın yanlış söylediğini varsayma ve "yanlış" deme: önce ne duyduğunu sor, ardından doğrusunu tek cümleyle söyle. Örnek: "Kromofil mi dediniz? Sayıca en çok olan kromofoblardır." Soru sormama kuralının tek istisnası budur. Aday "kromofob dedim" gibi netleştirirse yalnızca "Tamam" de; oturumun devamında o terimi öyle anla ve aynı terim için bir daha sorma.`;
   // Kısa takip soruları ("Paratiroid peki?") soru sayılmayıp "Tamam" ile geçiştirilmesin; kısa onaylara da cevap verilmesin
-  const FOLLOWUP_NOTE = `Kısa ve eksiltili sorular da sorudur. "Paratiroid peki?", "Peki ya böbrek?", "Neden?" gibi bir söz, az önce konuşulan konuya göre anlaşılır: neyin sorulduğunu önceki sorudan ve cevabından çıkar, kısa ve net cevap ver; böyle bir soruya "Tamam" deme. "Doğru mu?", "Değil mi?" gibi onay isteyen sorular da sorudur; "Tamam" adaya duyurulmadığı için cevap sayılmaz: az önce anlattığı doğruysa "Evet, doğru." de, yanlışsa düzelt. Aday yalnızca "hı hı", "evet", "tamam", "anladım", "aynen öyle" gibi bir onay verdiyse "Tamam" de.`;
+  const FOLLOWUP_NOTE = `Kısa ve eksiltili sorular da sorudur. "Paratiroid peki?", "Peki ya böbrek?", "Neden?" gibi bir söz, az önce konuşulan konuya göre anlaşılır: neyin sorulduğunu önceki sorudan ve cevabından çıkar, kısa ve net cevap ver; böyle bir soruya "Tamam" deme. "Doğru mu?", "Değil mi?" gibi onay isteyen sorular da sorudur; "Tamam" adaya duyurulmadığı için cevap sayılmaz: az önce anlattığı doğruysa "Evet, doğru." de, yanlışsa düzelt. "Nerede kalmıştık?" da sana sorulmuş bir sorudur: adayın en son ne anlattığını tek cümleyle hatırlat; bu oturumda henüz bir şey anlatmadıysa bunu söyle. Bir soruya verecek cevabın yoksa ya da soruyu anlamadıysan bunu tek cümleyle söyle; o zaman da "Tamam" deme. Aday yalnızca "hı hı", "evet", "tamam", "anladım", "aynen öyle" gibi bir onay verdiyse "Tamam" de.`;
   // Kaldığınız yerden devam ettiğinizde (ya da bağlantı kopup bağlam kaybolduğunda) eski anlatım Google'a gönderilmez.
   // Dinleyici bunu bilsin: "nerede kalmıştık" diye sorulursa susmasın, uydurmasın.
   const RESUME_NOTE = `Bu oturum, daha önce başlamış bir anlatımın devamı; o kısmı hatırlamıyorsun. Aday "nerede kalmıştık" gibi bir şey sorarsa tahmin yürütme: önceki kısmı hatırlamadığını tek cümleyle söyle.`;
@@ -1457,7 +1457,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     const all = words.replace(/["“”«»]/g, "'").replace(/\s+/g, " ").trim(), q = all.slice(-140);
     gate.sending = false; gate.ring = []; gate.hot = 0; gate.quietMs = 0; gate.speechMs = 0;   // sondaki sessizliğin gönderimi biter (akışı sendText kapatır)
     session.userTail = ""; curMe = null;
-    sendText("Az önce sana bir soru sordum ama cevap vermedin. Son sözüm şuydu: \"" + (q.length < all.length ? "…" : "") + q + "\". Bu bir soruydu; az önce konuştuğumuz konuya göre kısa ve net cevap ver.", why);
+    sendText("Az önce sorduğum soruya duyabileceğim bir cevap gelmedi (\"Tamam\" dediysen o bana duyurulmuyor). Sorum şuydu: \"" + (q.length < all.length ? "…" : "") + q + "\". Şimdi bu soruya kısa ve net cevap ver; \"Tamam\" deme. Cevabı bilmiyorsan ya da soruyu anlamadıysan bunu bir cümleyle söyle.", why);
   }
   const NOTHING_MS = 4000;   // dinleyicinin söyleyecek bir şeyi olmadığında bunu bildiren satırın ekranda kalma süresi
   function speakingState() {
@@ -2328,6 +2328,10 @@ Kurallar:
     }
     els.start.disabled = false; els.start.textContent = "Durdur"; els.start.classList.add("stop");
     els.pause.disabled = false;
+    // Tarayıcının gördüğü mikrofonlar ("Varsayılan" dışındakiler): Bluetooth kulaklığın mikrofonu aralarında mı?
+    let inputs = [];
+    try { inputs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === "audioinput" && d.deviceId !== "default" && d.deviceId !== "communications").map(d => "“" + (d.label || "adsız") + "”"); } catch {}
+    audio.inputs = inputs;
     if (isQuiz()) {
       els.repeat.disabled = els.skip.disabled = false;
       qLog("sys", "Soru oturumu başladı: " + plan.length + " soru.");
@@ -2336,19 +2340,13 @@ Kurallar:
       els.check.disabled = els.done.disabled = false;
       // Ses kulaklıktan gelmiyorsa ilk bakılacak yer: tarayıcı hangi mikrofonu açtı? (Bluetooth kulaklığın mikrofonu
       // açılamadıysa tablet kendi mikrofonuna ve hoparlörüne döner.)
-      addLog("sys", "Mikrofon: “" + (audio.micLabel || "adı bilinmiyor") + "”.");
+      addLog("sys", "Mikrofon: “" + (audio.micLabel || "adı bilinmiyor") + "”" + (inputs.length ? " (tarayıcının gördükleri: " + inputs.join(", ") + ")" : "") + ".");
       if (resumed) addLog("sys", "Kaldığınız yerden devam (" + elapsed() + "). Dinleyici yeni bir oturumla başladı: " + (els.topic.value.trim() ? "konuyu biliyor, " : "") + "önceki anlatımı hatırlamıyor.");
       else addLog("sys", "Oturum başladı" + (els.topic.value.trim() ? ": " + els.topic.value.trim() : "") + ".");
     }
     mediaSessionState();
     requestWakeLock();
     diagUpdate();
-    try {
-      navigator.mediaDevices.enumerateDevices().then(list => {
-        audio.inputs = list.filter(d => d.kind === "audioinput" && d.deviceId !== "default" && d.deviceId !== "communications").map(d => "“" + (d.label || "adsız") + "”");
-        diagUpdate();
-      }).catch(() => {});
-    } catch {}
   }
   function stop(fromError) {
     const was = session.running;
