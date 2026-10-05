@@ -121,6 +121,10 @@ textarea { font-size: 0.88rem; line-height: 1.5; min-height: 220px; resize: vert
 .notes li { display: grid; grid-template-columns: 3.4em minmax(0, 1fr); gap: 10px; align-items: baseline; padding: 10px 12px; border-radius: 10px; background: var(--eosin-soft); }
 .notes li time { font: 500 0.78rem var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
 .notes li p { margin: 0; font: 400 1rem/1.5 var(--display); }
+/* Notlar kapalıyken yalnızca en son not, tek satır olarak görünür (sayfa uzamasın, Ayarlar'a inmek kolay olsun) */
+.notes ol.one li { display: none; }
+.notes ol.one li:last-child { display: grid; cursor: pointer; }
+.notes ol.one li p { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .empty { color: var(--muted); font-size: 0.93rem; padding: 6px 0; }
 details.log summary { cursor: pointer; font-weight: 600; font-size: 0.92rem; }
 .transcript { margin-top: 10px; max-height: 280px; overflow-y: auto; display: grid; gap: 8px; font-size: 0.9rem; }
@@ -241,6 +245,7 @@ a { color: var(--hema); }
       <div class="notes-head">
         <div><div class="eyebrow">Dinleyicinin uyarıları</div><h2>Notlar</h2></div>
         <div class="row">
+          <button class="small" id="notesToggle" type="button" aria-expanded="false" hidden>Tümünü göster</button>
           <button class="small" id="copyBtn" type="button">Notları kopyala</button>
           <button class="small" id="clearBtn" type="button" title="Notları, dökümü ve süreyi siler; yeni bir derse başlarsınız">Temizle</button>
         </div>
@@ -338,7 +343,7 @@ a { color: var(--hema); }
         <span><b>Kulaklık kullanın.</b> Hoparlörden çıkan ses mikrofona geri dönerse dinleyici kendi sesini sizin sözünüz sanabilir.</span>
         <span>Mikrofon izni sorulursa <b>İzin ver</b>'e basın. Sayfayı Chrome ya da Edge ile açın.</span>
       </div>
-      <div class="hint" style="margin-top:14px">Sürüm: 4 Ekim 2026. Karşılaştırmak için eski sürümler: <a href="https://mehmetsevketkaya2-ai.github.io/tus-dinleyici/2ekim.html">2 Ekim</a> · <a href="https://mehmetsevketkaya2-ai.github.io/tus-dinleyici/1ekim.html">1 Ekim</a></div>
+      <div class="hint" style="margin-top:14px">Sürüm: 6 Ekim 2026. Karşılaştırmak için eski sürümler: <a href="https://mehmetsevketkaya2-ai.github.io/tus-dinleyici/2ekim.html">2 Ekim</a> · <a href="https://mehmetsevketkaya2-ai.github.io/tus-dinleyici/1ekim.html">1 Ekim</a></div>
       <div class="hint" id="diag"></div>
     </details>
   </section>
@@ -437,7 +442,8 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     qList: $("qList"), qTranscript: $("qTranscript"), qClear: $("qClear"),
     quizKey: $("quizKey"), quizKeyStatus: $("quizKeyStatus"), exModel: $("exModel"), lockRun: $("lockRun"),
     apiKey: $("apiKey"), keyStatus: $("keyStatus"), settings: $("settings"), silence: $("silence"), silenceOut: $("silenceOut"),
-    voice: $("voice"), model: $("model"), prompt: $("prompt"), promptStatus: $("promptStatus"), diag: $("diag")
+    voice: $("voice"), model: $("model"), prompt: $("prompt"), promptStatus: $("promptStatus"), diag: $("diag"),
+    notesToggle: $("notesToggle")
   };
   const cfg = {
     key: store.get("key", ""),
@@ -535,6 +541,9 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
   // Soru modunda saat yalnızca o oturumun süresini gösterir; dersin süresine eklenmez.
   function lectureMs() { return lecture.baseMs + (!isQuiz() && session.startedAt ? Date.now() - session.startedAt : 0); }
   function elapsed() { return fmtClock(isQuiz() ? (session.startedAt ? Date.now() - session.startedAt : 0) : lectureMs()); }
+  // Notlar çoğaldıkça sayfa uzuyor, Ayarlar'a inmek zorlaşıyordu: liste kapalı durur ve yalnızca en son notu
+  // tek satır olarak gösterir; düğmeye ya da satıra dokununca tamamı açılır. Seçim hatırlanır.
+  let notesOpen = store.get("notesopen", "0") === "1";
   function renderNotes() {
     els.notes.innerHTML = "";
     notes.forEach(n => {
@@ -544,7 +553,13 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
       li.append(t, p); els.notes.append(li);
     });
     els.notesEmpty.hidden = notes.length > 0;
+    els.notes.classList.toggle("one", !notesOpen && notes.length > 1);
+    els.notesToggle.hidden = notes.length < 2;
+    els.notesToggle.textContent = notesOpen ? "Tek satır göster" : "Tümünü göster (" + notes.length + ")";
+    els.notesToggle.setAttribute("aria-expanded", notesOpen ? "true" : "false");
   }
+  els.notesToggle.onclick = () => { notesOpen = !notesOpen; store.set("notesopen", notesOpen ? "1" : "0"); renderNotes(); };
+  els.notes.onclick = () => { if (!notesOpen && notes.length > 1) els.notesToggle.onclick(); };
   function addNote(text) { notes.push({ at: elapsed(), text }); renderNotes(); saveSoon(); }
   function addLog(who, text, at) {
     const entry = { who, text, at: at || elapsed() };

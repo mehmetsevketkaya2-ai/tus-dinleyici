@@ -34,8 +34,10 @@ denemede bir kez kopyalar. Asıl sayfanın kayıtlarına hiçbir zaman yazmaz.
 
 ## Durum
 
-- 6 Ekim 2026: `deneme.html` üzerinde **1-notlar** deneniyor (Notlar bölümünde yalnızca en son not, tek satır;
-  "Tümünü göster" ile açılır). Kullanıcının "tamam" demesi bekleniyor; denince aynı değişiklik `index.html`
-  dosyasına geçer.
-- Sırada, yine tek tek: kısa takip sorularına cevap ("Paratiroid peki?"); "Nerede kalmıştık?" sorusunda kalınan
-  konuyu söylemesi ("Kaldığın yerden devam et" ile sürdürüldüğünde de; "Yeni ders"te unutur).
+- 6 Ekim 2026: **1-notlar** (Notlar bölümünde yalnızca en son not, tek satır; "Tümünü göster" ile açılır)
+  deneme sayfasında denendi, kullanıcı "tamam" dedi ve `index.html` dosyasına geçti. `index.html` artık
+  4 Ekim sürümü + bu değişikliktir ("Sürüm: 6 Ekim 2026"). `deneme.html` aynı değişiklikle duruyor; şu an
+  denenen yeni bir şey yok.
+- Kullanıcının isteğiyle **şimdilik bekliyor** (istemeden başlanmaz): kısa takip sorularına cevap
+  ("Paratiroid peki?"); "Nerede kalmıştık?" sorusunda kalınan konuyu söylemesi ("Kaldığın yerden devam et"
+  ile sürdürüldüğünde de; "Yeni ders"te unutur).
