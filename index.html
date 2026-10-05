@@ -121,6 +121,10 @@ textarea { font-size: 0.88rem; line-height: 1.5; min-height: 220px; resize: vert
 .notes li { display: grid; grid-template-columns: 3.4em minmax(0, 1fr); gap: 10px; align-items: baseline; padding: 10px 12px; border-radius: 10px; background: var(--eosin-soft); }
 .notes li time { font: 500 0.78rem var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
 .notes li p { margin: 0; font: 400 1rem/1.5 var(--display); }
+/* Notlar kapalıyken yalnızca en son not, tek satır olarak görünür (sayfa uzamasın, Ayarlar'a inmek kolay olsun) */
+.notes ol.one li { display: none; }
+.notes ol.one li:last-child { display: grid; cursor: pointer; }
+.notes ol.one li p { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .empty { color: var(--muted); font-size: 0.93rem; padding: 6px 0; }
 details.log summary { cursor: pointer; font-weight: 600; font-size: 0.92rem; }
 .transcript { margin-top: 10px; max-height: 280px; overflow-y: auto; display: grid; gap: 8px; font-size: 0.9rem; }
@@ -241,6 +245,7 @@ a { color: var(--hema); }
       <div class="notes-head">
         <div><div class="eyebrow">Dinleyicinin uyarıları</div><h2>Notlar</h2></div>
         <div class="row">
+          <button class="small" id="notesToggle" type="button" aria-expanded="false" hidden>Tümünü göster</button>
           <button class="small" id="copyBtn" type="button">Notları kopyala</button>
           <button class="small" id="clearBtn" type="button" title="Notları, dökümü ve süreyi siler; yeni bir derse başlarsınız">Temizle</button>
         </div>
@@ -281,7 +286,7 @@ a { color: var(--hema); }
         <div class="field">
           <label for="silence">Sustuğunuzda kaç saniye beklesin?</label>
           <input type="range" id="silence" min="0.5" max="10" step="0.5" value="4">
-          <div class="row"><span class="val" id="silenceOut">4,0 sn</span><span class="hint">Bu kadar süre susmadan söz almaz. Kısa tutarsanız daha çabuk cevap verir ama düşünmek için durduğunuzda araya girebilir; sık bölünüyorsanız artırın.</span></div>
+          <div class="row"><span class="val" id="silenceOut">4,0 sn</span><span class="hint">Bu kadar süre susmadan söz almaz. Kısa tutarsanız daha çabuk cevap verir ama düşünmek için durduğunuzda araya girebilir; sık bölünüyorsanız artırın. Süre uzunsa, soru sorduğunuzda (“… doğru mu?”) 1,5 saniye susmanız yeter.</span></div>
           <label class="check" for="lockRun"><input type="checkbox" id="lockRun" checked> Ekran kilitliyken de çalışmayı dene</label>
           <span class="hint">Oturum sürerken duyulmayan bir ses çalınır ve sayfa kilit ekranında oynatıcı gibi görünür; böylece telefon sayfayı uyutmaz. Oradaki duraklat düğmesi ve kulaklık düğmesi dinlemeyi duraklatır. Bazı telefonlar yine de mikrofonu keser; döndüğünüzde sayfa bunu bildirir.</span>
 
@@ -330,7 +335,7 @@ a { color: var(--hema); }
         <div class="field" style="margin-top:10px">
           <textarea id="prompt" spellcheck="false" aria-label="Talimat"></textarea>
           <div class="row"><button class="small" id="resetPrompt" type="button">Varsayılana dön</button><span class="hint" id="promptStatus"></span></div>
-          <span class="hint">Bu talimata her zaman kısa bir not eklenir: dinleyici benzer sesli bir terimi (kromofob / kromofil gibi) yanlış duymuş olabileceğinde “yanlış” demez, ne duyduğunu sorar.</span>
+          <span class="hint">Bu talimata her zaman iki kısa not eklenir: dinleyici benzer sesli bir terimi (kromofob / kromofil gibi) yanlış duymuş olabileceğinde “yanlış” demez, ne duyduğunu sorar; “Paratiroid peki?” gibi kısa takip sorularını da soru sayıp cevaplar.</span>
         </div>
       </details>
 
@@ -338,7 +343,7 @@ a { color: var(--hema); }
         <span><b>Kulaklık kullanın.</b> Hoparlörden çıkan ses mikrofona geri dönerse dinleyici kendi sesini sizin sözünüz sanabilir.</span>
         <span>Mikrofon izni sorulursa <b>İzin ver</b>'e basın. Sayfayı Chrome ya da Edge ile açın.</span>
       </div>
-      <div class="hint" style="margin-top:14px">Sürüm: 4 Ekim 2026. Karşılaştırmak için eski sürümler: <a href="https://mehmetsevketkaya2-ai.github.io/tus-dinleyici/2ekim.html">2 Ekim</a> · <a href="https://mehmetsevketkaya2-ai.github.io/tus-dinleyici/1ekim.html">1 Ekim</a></div>
+      <div class="hint" style="margin-top:14px">Sürüm: 5 Ekim 2026. Karşılaştırmak için eski sürümler: <a href="https://mehmetsevketkaya2-ai.github.io/tus-dinleyici/2ekim.html">2 Ekim</a> · <a href="https://mehmetsevketkaya2-ai.github.io/tus-dinleyici/1ekim.html">1 Ekim</a></div>
       <div class="hint" id="diag"></div>
     </details>
   </section>
@@ -355,6 +360,7 @@ a { color: var(--hema); }
   const MAX_LEVEL = 6;            // kurulum sadeleştirme basamakları
   const GATE_SEC = 1.6;           // döküm kapalıyken: bu kadar sesten sonra cevap dolgu sayılmaz
   const GATE_SEC_TX = 4.0;        // döküm açıkken: yazı gecikse bile bu kadar sesten sonra çalınır
+  const STRICT_GATE_SEC = 1.2;    // soru sorduysanız: yazısı gelmese de "Tamam"dan uzun süren cevap çalınır
   const DIALOG_MAX_CHARS = 220;   // sohbet sırasında bundan uzun anlatım = konuya dönüş
 
   const DEFAULT_PROMPT = `Sen bir TUS (Tıpta Uzmanlık Sınavı) adayının çalışma arkadaşısın. Aday sana sesli olarak konu anlatıyor; sen dikkatle dinleyen, tıp bilgisi güçlü bir arkadaşsın.
@@ -376,6 +382,11 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
   // Benzer sesli terimler (kromofob/kromofil gibi) yanlış duyulabiliyor; o zaman dinleyici adayı haksız yere düzeltiyordu.
   // Bu not hem hazır talimata hem kullanıcının düzenlediği talimata eklenir: emin olmadığı terimde "yanlış" demez, ne duyduğunu sorar.
   const HEARING_NOTE = `Sesi her zaman kusursuz duyamazsın; benzer sesli tıp terimlerini birbirine karıştırabilirsin: kromofob/kromofil, hipo-/hiper-, aferent/eferent, abdüksiyon/addüksiyon, -oz/-it gibi. Bir uyarın yalnızca böyle bir terime dayanıyorsa adayın yanlış söylediğini varsayma ve "yanlış" deme: önce ne duyduğunu sor, ardından doğrusunu tek cümleyle söyle. Örnek: "Kromofil mi dediniz? Sayıca en çok olan kromofoblardır." Soru sormama kuralının tek istisnası budur. Aday "kromofob dedim" gibi netleştirirse yalnızca "Tamam" de; oturumun devamında o terimi öyle anla ve aynı terim için bir daha sorma.`;
+  // Kısa takip soruları ("Paratiroid peki?") soru sayılmayıp "Tamam" ile geçiştirilmesin; kısa onaylara da cevap verilmesin
+  const FOLLOWUP_NOTE = `Kısa ve eksiltili sorular da sorudur. "Paratiroid peki?", "Peki ya böbrek?", "Neden?" gibi bir söz, az önce konuşulan konuya göre anlaşılır: neyin sorulduğunu önceki sorudan ve cevabından çıkar, kısa ve net cevap ver; böyle bir soruya "Tamam" deme. "Doğru mu?", "Değil mi?" gibi onay isteyen sorular da sorudur; "Tamam" adaya duyurulmadığı için cevap sayılmaz: az önce anlattığı doğruysa "Evet, doğru." de, yanlışsa düzelt. Aday yalnızca "hı hı", "evet", "tamam", "anladım", "aynen öyle" gibi bir onay verdiyse "Tamam" de.`;
+  // Kaldığınız yerden devam ettiğinizde (ya da bağlantı kopup bağlam kaybolduğunda) eski anlatım Google'a gönderilmez.
+  // Dinleyici bunu bilsin: "nerede kalmıştık" diye sorulursa susmasın, uydurmasın.
+  const RESUME_NOTE = `Bu oturum, daha önce başlamış bir anlatımın devamı; o kısmı hatırlamıyorsun. Aday "nerede kalmıştık" gibi bir şey sorarsa tahmin yürütme: önceki kısmı hatırlamadığını tek cümleyle söyle.`;
   // Notlara yalnızca bilgi yazılır: baştaki "… mi dediniz?" sorusu nota alınmaz
   const HEARD_Q = /^[^.!?…]{0,90}\b(dediniz|dedin|demiştiniz|söylediniz|demek istediniz)(\s*,?\s*(değil\s+)?m[ıiuü])?\s*\?\s*/iu;
   const CHECK_TEXT = "Şu ana kadar anlattıklarımda kritik bir yanlış ya da TUS için önemli bir eksik var mı? Varsa en fazla iki kısa cümleyle söyle, yoksa sadece \"eksik yok\" de.";
@@ -408,6 +419,25 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
   // Söylediklerinizin sonunda bir soru var mı? ("değil mi", "doğru mu", "mı/mi/mu/mü", soru sözcükleri, "?")
   const Q_RE = /\?|(^|[\s,])(m[ıiuü](s[ıiuü]n(ız|iz|uz|üz)?|y[ıiuü]m|y[ıiuü]z|d[ıiuü]r|yd[ıiuü])?|ne|neden|niye|niçin|nasıl|hangi|hangisi|hangileri|kim|kimdir|kaç|nedir|nerede|nereden|nereye)(?=[\s,.!?…]|$)/;
   function looksLikeQuestion(text) { return !!text && Q_RE.test(text.toLocaleLowerCase("tr").slice(-160)); }
+  // Sözünüz soruyla mı bitti? İki düzey:
+  // - Açık soru: soru işaretiyle ya da soru ekiyle biter ("… doğru mu?", "değil mi", "nerede kalmıştık?").
+  //   Ders anlatırken de dinleyiciye hemen söz verdirir.
+  // - Soru olabilir: ayrıca soru sözcüğüyle ("… neden", "… nasıl") ya da "paratiroid peki" gibi biter. Cümle ortasındaki
+  //   bir duraklama da böyle görünebildiği için yalnızca sohbette (dinleyici az önce konuşmuşken) hemen söz verdirir.
+  //   Tek başına "peki" ya da "tamam peki" soru değil, onaydır.
+  const QMARK_END = /\?["'”’)\s]*$/;
+  const QPART_END = /(^|[\s,])m[ıiuü](y[ıiuü]m|y[ıiuü]z|s[ıiuü]n(ız|iz|uz|üz)?|d[ıiuü]r|yd[ıiuü])?[\s.!…]*$/;
+  const QWORD_END = /(^|[\s,])(nedir|neden|niye|niçin|nasıl|hangisi|hangileri|kaç|kim|nerede)[\s.!…]*$/;
+  const PEKI_END = /(?:^|[\s,.!…])([\p{L}'’-]+)[\s,]+peki[\s.!…]*$/u;
+  function tailOf(text) { return (text || "").toLocaleLowerCase("tr").trim().slice(-60); }
+  function clearQuestion(text) { const s = tailOf(text); return !!s && (QMARK_END.test(s) || QPART_END.test(s)); }
+  function endsWithQuestion(text) {
+    const s = tailOf(text);
+    if (!s) return false;
+    if (QMARK_END.test(s) || QPART_END.test(s) || QWORD_END.test(s)) return true;
+    const m = PEKI_END.exec(s);
+    return !!m && !MARKER_WORDS.has(m[1]) && !AFFIRM_WORDS.has(m[1]);
+  }
 
   // ---------- Kısayollar ----------
   const $ = (id) => document.getElementById(id);
@@ -437,7 +467,8 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     qList: $("qList"), qTranscript: $("qTranscript"), qClear: $("qClear"),
     quizKey: $("quizKey"), quizKeyStatus: $("quizKeyStatus"), exModel: $("exModel"), lockRun: $("lockRun"),
     apiKey: $("apiKey"), keyStatus: $("keyStatus"), settings: $("settings"), silence: $("silence"), silenceOut: $("silenceOut"),
-    voice: $("voice"), model: $("model"), prompt: $("prompt"), promptStatus: $("promptStatus"), diag: $("diag")
+    voice: $("voice"), model: $("model"), prompt: $("prompt"), promptStatus: $("promptStatus"), diag: $("diag"),
+    notesToggle: $("notesToggle")
   };
   const cfg = {
     key: store.get("key", ""),
@@ -512,9 +543,11 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
 
   function instruction() {
     if (isQuiz()) return quizInstruction();
-    const base = (cfg.customPrompt || DEFAULT_PROMPT) + "\n\n" + HEARING_NOTE;
+    let text = (cfg.customPrompt || DEFAULT_PROMPT) + "\n\n" + HEARING_NOTE + "\n\n" + FOLLOWUP_NOTE;
     const topic = els.topic.value.trim();
-    return topic ? base + "\n\nBugünkü konu: " + topic + "." : base;
+    if (topic) text += "\n\nBugünkü konu: " + topic + ".";
+    if (session.resumed) text += "\n\n" + RESUME_NOTE;
+    return text;
   }
 
   // ---------- Arayüz durumu ----------
@@ -535,6 +568,9 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
   // Soru modunda saat yalnızca o oturumun süresini gösterir; dersin süresine eklenmez.
   function lectureMs() { return lecture.baseMs + (!isQuiz() && session.startedAt ? Date.now() - session.startedAt : 0); }
   function elapsed() { return fmtClock(isQuiz() ? (session.startedAt ? Date.now() - session.startedAt : 0) : lectureMs()); }
+  // Notlar çoğaldıkça sayfa uzuyor, Ayarlar'a inmek zorlaşıyordu: liste kapalı durur ve yalnızca en son notu
+  // tek satır olarak gösterir; düğmeye ya da satıra dokununca tamamı açılır. Seçim hatırlanır.
+  let notesOpen = store.get("notesopen", "0") === "1";
   function renderNotes() {
     els.notes.innerHTML = "";
     notes.forEach(n => {
@@ -544,7 +580,13 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
       li.append(t, p); els.notes.append(li);
     });
     els.notesEmpty.hidden = notes.length > 0;
+    els.notes.classList.toggle("one", !notesOpen && notes.length > 1);
+    els.notesToggle.hidden = notes.length < 2;
+    els.notesToggle.textContent = notesOpen ? "Tek satır göster" : "Tümünü göster (" + notes.length + ")";
+    els.notesToggle.setAttribute("aria-expanded", notesOpen ? "true" : "false");
   }
+  els.notesToggle.onclick = () => { notesOpen = !notesOpen; store.set("notesopen", notesOpen ? "1" : "0"); renderNotes(); };
+  els.notes.onclick = () => { if (!notesOpen && notes.length > 1) els.notesToggle.onclick(); };
   function addNote(text) { notes.push({ at: elapsed(), text }); renderNotes(); saveSoon(); }
   function addLog(who, text, at) {
     const entry = { who, text, at: at || elapsed() };
@@ -761,6 +803,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     audio.tap = tap; audio.sink = sink;
   }
   // Ayarlar'ın altındaki tanılama satırı: bir sorun olduğunda hangi mikrofonla, hangi ayarlarla çalışıldığı görülsün
+  const stats = { lagN: 0, lagSum: 0, lagMax: 0, holdN: 0, holdSum: 0 };
   function diagUpdate() {
     try {
       const tr = audio.stream && audio.stream.getAudioTracks()[0];
@@ -771,6 +814,10 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
       if (audio.ctx) bits.push("çalma " + khz(audio.ctx.sampleRate));
       bits.push("yankı önleme " + (st.echoCancellation === false ? "kapalı" : "açık"), "gürültü bastırma " + (st.noiseSuppression === false ? "kapalı" : "açık"));
       bits.push("basamak " + session.level, "kilit desteği " + (keep.on ? "açık" : "kapalı"));
+      // Gecikme nerede? Google'ın cevap süresi (sustuğunuz andan ilk sese; bekleme ayarı dahil) ve sayfanın çalmadan önceki bekletmesi
+      const sn = (ms) => fmtSec(ms / 1000) + " sn";
+      if (stats.lagN) bits.push("cevap gecikmesi ort. " + sn(stats.lagSum / stats.lagN) + ", en çok " + sn(stats.lagMax) + " (" + stats.lagN + " cevap)");
+      if (stats.holdN) bits.push("çalmadan önce bekletme ort. " + sn(stats.holdSum / stats.holdN));
       els.diag.textContent = "Son başlatma: " + bits.join(" · ");
     } catch {}
   }
@@ -861,10 +908,12 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
   const CHUNK_MS = CHUNK / IN_RATE * 1000;              // 64 ms
   const PRE_ROLL_CHUNKS = Math.ceil(1200 / CHUNK_MS);   // ~1,2 sn
   const FLOOR_WIN = Math.ceil(8000 / CHUNK_MS);        // gürültü tabanı için son ~8 sn
-  const gate = { sending: false, ring: [], quietMs: 0, hot: 0, levels: [] };
+  const gate = { sending: false, ring: [], quietMs: 0, hot: 0, speechMs: 0, levels: [] };
   // Dinleyici konuşurken söze girme:
   // - Sesiniz duyulur duyulmaz (ONSET_MS) dinleyici duraklar; Google'ın "sözü kesildi" demesi beklenmez.
-  // - Kısa bir onaysa ("hı hı", "evet", "aynen öyle": BARGE_MS'den kısa) sesiniz gönderilmez, dinleyici kaldığı yerden sürer.
+  // - Kısa bir sözse (BARGE_MS'den kısa: "hı hı", "evet", ama "Paratiroid peki?" de olabilir) dinleyici kaldığı yerden sürer.
+  //   Söz atılmaz: dinleyici sözünü bitirince iletilir, böylece kısa bir soru cevapsız kalmaz. (Anlık sesler atılır.)
+  //   (Soru modunda kısa sesler atılır.)
   // - BARGE_MS'den uzun konuşursanız sözünüz başından itibaren gönderilir; dinleyici duraklamış bekler.
   //   Google "sözü kesildi" derse (ya da sözünü çoktan bitirmişse) tamamen susar; demezse (söz değil gürültüydü)
   //   siz susunca kaldığı yerden sürer. Yani susturma anında olur, kesin kararı yine Google verir.
@@ -876,21 +925,70 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
   const RESUME_GAP_MS = 500;                            // duraklamışken bu kadar sessizlik olursa kaldığı yerden sürer
   const MAX_MISSES = 2;                                 // bir konuşmada en fazla bu kadar boş yere duraklar
   const VERDICT_MS = 2000;                              // sözünüz gönderildikten sonra Google'ın kararı en az bu kadar beklenir
+  const LATE_MIN_MS = 300;                              // bundan kısa ses (tık, tabak sesi) saklanmaz, atılır; "Doğru mu?" kadar kısa bir soru saklanır
+  const LATE_MAX = Math.ceil(8000 / CHUNK_MS);          // dinleyici bitirince iletilmek üzere bekletilen kısa sözler: en fazla ~8 sn
+  const LATE_TTL_MS = 60000;                            // bu kadar beklemiş bir söz artık iletilmez
+  // Sözünüzün bittiği belliyse Google'ın sessizlik süresi (Ayarlar'daki bekleme) beklenmez; yoksa soru sorup
+  // saniyelerce cevap beklersiniz, soruyu yinelediğinizde de süre baştan başlar.
+  // - Açık bir soru sorduysanız ("… doğru mu?"): her zaman. Ders anlatırken biraz daha uzun beklenir.
+  // - Sohbette (dinleyici az önce konuştu): soru olabilecek her sözde ve kısa sözlerde ("Paratiroid peki?").
+  // Düz cümlelerde böyle yapılmaz: düşünme payınız ayarladığınız süredir.
+  const QUICK_MS = 1200;                                // sohbette bu kadar susunca dinleyiciye söz verilir
+  const ASK_QUICK_MS = 1500;                            // ders anlatırken sorulan açık sorudan sonra bu kadar susunca
+  const DIALOG_QUICK_MS = 1600;                         // sohbette "kısa söz" sayılan en uzun konuşma
+  const SILENT_CHUNK = toB64(new Int16Array(CHUNK));    // 64 ms sessizlik
+  // Google bazen sözünüzden sonra hiçbir şey üretmiyor (ne cevap ne "Tamam"). Bir soru sorup sustuysanız ve olağan
+  // cevap süresinden 2 sn fazla beklendiği hâlde hiç ses gelmediyse soru bir kez de yazıyla sorulur.
+  // Olağan süre: bekleme ayarı + ~1 sn; seçili model daha yavaşsa (her cevapta ölçülür) ona göre uzar.
+  function stallMs() { return Math.max(silenceSec() * 1000 + 3000, (session.replyLag || 0) + 2000); }
   // Soru modunda cevaplar kısadır ("C şıkkı", "geç"): yarım saniyelik söz araya girmeye yeter,
   // tabak tıkırtısı gibi anlık sesler ise yetmez. Sustuktan 1 sn sonra cevap bitmiş sayılır.
   const QUIZ_BARGE_MS = 500;
   const QUIZ_SILENCE = 1.0;
   function bargeMs() { return isQuiz() ? QUIZ_BARGE_MS : BARGE_MS; }
   function silenceSec() { return isQuiz() ? QUIZ_SILENCE : cfg.silence; }
-  const barge = { pre: [], buf: [], speechMs: 0, quietMs: 0, loud: 0, onset: false, active: false, live: false, idle: 0, wait: 0, misses: 0, penalty: 0, clean: 0 };
+  const barge = { pre: [], buf: [], speechMs: 0, quietMs: 0, loud: 0, onset: false, active: false, live: false, idle: 0, wait: 0, misses: 0, penalty: 0, clean: 0, late: [], lateAt: 0, lateWait: 0 };
   function bargeClear() { barge.pre = []; barge.buf = []; barge.speechMs = 0; barge.quietMs = 0; barge.loud = 0; barge.onset = false; }
-  function resetBarge() { bargeClear(); barge.active = false; barge.live = false; barge.idle = 0; barge.wait = 0; barge.misses = 0; if (audio.paused) resumePlayback(); }
-  function resetGate() { gate.sending = false; gate.ring = []; gate.quietMs = 0; gate.hot = 0; resetBarge(); }
-  // Söz kısa sürdü: bir onay ya da bir gürültüydü. Dinleyici duraklatıldıysa kaldığı yerden sürer.
+  function resetBarge() { bargeClear(); barge.active = false; barge.live = false; barge.idle = 0; barge.wait = 0; barge.misses = 0; barge.late = []; barge.lateWait = 0; if (audio.paused) resumePlayback(); }
+  function resetGate() { gate.sending = false; gate.ring = []; gate.quietMs = 0; gate.hot = 0; gate.speechMs = 0; resetBarge(); }
+  // Söz kısa sürdü. Dinleyici duraklatıldıysa kaldığı yerden sürer.
+  // Soru modunda kısa ses atılır (iş yaparken çıkan sesler cevap sayılmasın). Dinleyici modunda atılmaz, çünkü bir soru
+  // olabilir ("Paratiroid peki?", "Doğru mu?"): saklanır ve dinleyici sözünü bitirince iletilir. Anlık sesler (tık, tabak sesi) yine atılır.
   function bargeMiss() {
-    if (barge.onset) barge.misses++;
+    if (barge.onset) {
+      barge.misses++;
+      if (!isQuiz() && barge.speechMs >= LATE_MIN_MS) { barge.late = barge.late.concat(barge.pre, barge.buf).slice(-LATE_MAX); barge.lateAt = Date.now(); barge.lateWait = 0; gate.ring = []; }
+    }
     bargeClear();
     if (audio.paused) { resumePlayback(); if (palSpeaking()) speakingState(); }
+  }
+  // Dinleyici sözünü bitirdi: konuşurken söylediğiniz kısa söz şimdi iletilir ve dinleyiciye hemen söz verilir
+  function lateFlush() {
+    const out = barge.late; barge.late = []; barge.lateWait = 0;
+    if (Date.now() - barge.lateAt > LATE_TTL_MS) return;
+    session.utterNo++;
+    out.forEach(sendAudio);
+    endTurnNow(0);
+  }
+  // Sözün bittiği belliyse Google'ın sessizlik süresini gerçek zamanlı beklemeye gerek yok: o kadar sessizlik
+  // bir kerede gönderilip akış kapatılır; dinleyici birkaç saniye beklemeden söz alır.
+  function endTurnNow(quietMs) {
+    const need = silenceSec() * 1000 + 600 - (quietMs || 0);   // Google'ın sözü bitmiş sayması için gereken sessizlikten eksik kalan
+    for (let ms = 0; ms < need; ms += CHUNK_MS) sendAudio(SILENT_CHUNK);
+    if (session.ready && !session.paused) rawSend(session.ws, { realtimeInput: { audioStreamEnd: true } });
+    gate.sending = false; gate.ring = []; gate.hot = 0; gate.quietMs = 0; gate.speechMs = 0;
+    // Gönderilen şey söz değil de bir sesse (öksürük gibi) cevap gelmez: yazı o zaman 8 sn sonra eski hâline döner
+    if (session.ready && !session.paused) { session.thinkingSince = Date.now(); session.thinkingMs = 8000; setState("live", "Düşünüyor", "Birazdan cevap verecek."); }
+  }
+  // Önceki cevabın notu kapanmadan yeni bir söze başladıysanız (bkz. onServer) o sözün dökümü ayrı tutulur
+  function userSaid() { return turn && turn.done && !turn.final ? (turn.nextTail || "") : session.userTail; }
+  // Cevapsız kalırsa yeniden sorulacak kadar belli bir soru mu? Ders anlatırken yalnızca açık sorular; sohbette soru olabilecek her söz.
+  function isAsk(text) { return session.dialogOpen ? endsWithQuestion(text) : clearQuestion(text); }
+  // Sözünüz bitti sayılıp dinleyiciye hemen söz verilecekse kaç ms susmanız yeter? (0: hemen söz verilmez)
+  function quickAfterMs() {
+    const said = userSaid(), cap = silenceSec() * 1000 + 300;   // bekleme ayarı zaten kısaysa ondan uzun beklenmez
+    if (session.dialogOpen) return endsWithQuestion(said) || (gate.speechMs >= 3 * CHUNK_MS && gate.speechMs <= DIALOG_QUICK_MS) ? Math.min(QUICK_MS, cap) : 0;
+    return clearQuestion(said) ? Math.min(ASK_QUICK_MS, cap) : 0;
   }
   // Sözünüz gönderildi ama Google "sözü kesildi" demedi (söz değil gürültüydü ya da fark etmedi):
   // siz susunca dinleyici kaldığı yerden sürer, gönderim kapatılır.
@@ -923,6 +1021,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     if (session.paused) return;   // duraklatılmışken ses gönderilmez, dinleyicinin sözü de kesilmez
     const thr = Math.max(0.008, noiseFloor() * 3);
     const speech = level > thr;
+    if (speech) session.spokeAt = Date.now();
     if (barge.wait) {
       // Sözünüz gönderildi; dinleyici duraklamış, Google'ın kararını bekliyor
       barge.quietMs = speech ? 0 : barge.quietMs + CHUNK_MS;
@@ -930,11 +1029,28 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
       else if (barge.quietMs >= RESUME_GAP_MS && Date.now() - barge.wait >= VERDICT_MS) bargeUnconfirmed();
     }
     if (!palSpeaking()) {
-      // Dinleyici sustu. Ses akışındaki anlık boşluk söz bitti sayılmasın diye ~0,3 sn beklenir.
       barge.active = false;
-      if (barge.live && ++barge.idle >= 5) bargeEnd();
+      if (barge.live) {
+        if (!isQuiz() && !gate.sending && barge.speechMs >= 2 * CHUNK_MS && (barge.quietMs === 0 || barge.speechMs >= LATE_MIN_MS)) {
+          // Siz konuşurken dinleyici sözünü bitirdi: sözünüz başından itibaren gönderilir, canlı olarak sürer.
+          // (Az önce bitmiş anlık bir ses, tık ya da tabak sesi, söz sayılmaz.)
+          const out = barge.late.concat(barge.pre, barge.buf);
+          barge.late = [];
+          gate.sending = true; gate.quietMs = barge.quietMs; gate.speechMs = barge.speechMs; gate.ring = []; gate.hot = 0;
+          bargeClear();
+          session.utterNo++;
+          out.forEach(sendAudio);
+        }
+        // Ses akışındaki anlık boşluk söz bitti sayılmasın diye ~0,3 sn beklenir.
+        if (++barge.idle >= 5) bargeEnd();
+      }
+      if (barge.late.length && !gate.sending) {
+        // Bekletilen kısa söz: Google da sözünü bitirdiyse (ya da 2 sn'dir ses gelmiyorsa) iletilir
+        if (Date.now() - barge.lateAt > LATE_TTL_MS) barge.late = [];
+        else if (!session.serverTurnOpen || ++barge.lateWait > 31) lateFlush();
+      }
     } else if (!barge.active) {
-      // Dinleyici konuşuyor: sesinizi beklet, kısa onayları at
+      // Dinleyici konuşuyor: sesiniz bekletilir
       barge.live = true; barge.idle = 0;
       gate.sending = false; gate.quietMs = 0; gate.hot = 0;
       if (speech) {
@@ -950,37 +1066,46 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
       if (!barge.onset && barge.speechMs >= ONSET_MS && barge.loud >= 2) {
         // Söze başladınız: dinleyici hemen duraklar. Kısık sesler (sızan yankı, uğultu) duraklatmaz.
         barge.onset = true;
-        if (barge.misses + barge.penalty < MAX_MISSES) { pausePlayback(); setState("live", "Sizi dinliyor", isQuiz() ? "Cevabınızı söyleyin; kısa bir sesse okumayı sürdürür." : "Kısa bir onaysa kaldığı yerden sürdürür."); }
+        if (barge.misses + barge.penalty < MAX_MISSES) { pausePlayback(); setState("live", "Sizi dinliyor", isQuiz() ? "Cevabınızı söyleyin; kısa bir sesse okumayı sürdürür." : "Kısa bir sözse önce cümlesini bitirir, sonra cevaplar."); }
       }
       if (barge.speechMs >= bargeMs()) {
         // Gerçekten söze girdiniz: sözünüz baştan itibaren gönderilir.
         barge.active = true;
-        const out = barge.pre.concat(barge.buf), clear = barge.onset;
+        const out = barge.late.concat(barge.pre, barge.buf), clear = barge.onset;
+        barge.late = [];
+        gate.sending = true; gate.quietMs = 0; gate.speechMs = barge.speechMs; gate.ring = [];
         bargeClear();
-        gate.sending = true; gate.quietMs = 0; gate.ring = [];
         // Google sözünü çoktan bitirmişse (çalınan, elimizde kalan sestir) "kesildi" demez: dinleyici burada susturulur.
         // Hâlâ konuşuyorsa dinleyici duraklamış bekler; kararı Google verir (bkz. bargeUnconfirmed, onServer).
         if (clear && !session.serverTurnOpen) abortTurn(true);
         else if (audio.paused) barge.wait = Date.now();
+        session.utterNo++;
         out.forEach(sendAudio);
       }
       return;
     }
     if (gate.sending) {
       sendAudio(b64);
-      gate.quietMs = speech ? 0 : gate.quietMs + CHUNK_MS;
+      if (speech) { gate.quietMs = 0; gate.speechMs += CHUNK_MS; } else gate.quietMs += CHUNK_MS;
+      if (!isQuiz() && gate.quietMs >= 7 * CHUNK_MS) { const ms = quickAfterMs(); if (ms && gate.quietMs >= ms) { endTurnNow(gate.quietMs); return; } }
       if (gate.quietMs >= silenceSec() * 1000 + 1000) {
         gate.sending = false; gate.ring = []; gate.hot = 0;
         if (session.ready && !session.paused) rawSend(session.ws, { realtimeInput: { audioStreamEnd: true } });
       }
       return;
     }
+    // Soru sordunuz, sustunuz, son sözünüzden beri duyulur bir cevap gelmedi. (Dinleyici hiçbir şey demedi; ya da
+    // "Tamam" dedi ama sorunuzun dökümü ondan sonra geldiği için o sırada soru olduğu anlaşılamadı.)
+    if (session.userTail && !isQuiz() && !turn && !palSpeaking() && session.ready && session.spokeAt > session.playedAt
+        && Date.now() - session.spokeAt > stallMs() && isAsk(session.userTail)) askAgain(session.userTail, "Duyulur bir cevap gelmedi; soru yeniden soruldu.");
     gate.ring.push(b64);
     if (gate.ring.length > PRE_ROLL_CHUNKS) gate.ring.shift();
     gate.hot = speech ? gate.hot + 1 : 0;
     if (gate.hot >= 2 || level > thr * 2.5) {
-      gate.sending = true; gate.quietMs = 0; gate.hot = 0;
-      const pre = gate.ring; gate.ring = [];
+      gate.sending = true; gate.quietMs = 0; gate.hot = 0; gate.speechMs = 0;
+      const pre = barge.late.concat(gate.ring);   // bekletilen kısa söz varsa önce o gider (sıra bozulmasın)
+      barge.late = []; gate.ring = [];
+      session.utterNo++;
       pre.forEach(sendAudio);
     }
   }
@@ -1095,7 +1220,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
         if (!session.running) throw { kind: "stopped" };
         if (e.kind !== "config") throw e;
         // Önce eski oturumu geri yüklemeden aynı ayarlarla dene; olmazsa ayarları bir basamak sadeleştir.
-        if (session.handle) { session.handle = null; session.contextLost = true; continue; }
+        if (session.handle) { session.handle = null; session.contextLost = true; if (!isQuiz()) session.resumed = true; continue; }
         level++;
       }
     }
@@ -1131,7 +1256,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     session.lastTextSent = { text, label, at: Date.now() };
     session.expectingAnswer = true;
     sysLog(label || (text === DONE_TEXT ? "Anlatımın bittiği bildirildi." : "Eksik olup olmadığı soruldu."));
-    session.thinkingSince = Date.now();
+    session.thinkingSince = Date.now(); session.thinkingMs = 15000;
     setState("live", "Düşünüyor", isQuiz() ? "Birazdan konuşacak." : "Birazdan cevap verecek.");
   }
 
@@ -1146,13 +1271,22 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     if (!sc) return;
     if (sc.interimInputTranscription && sc.interimInputTranscription.text) els.liveLine.textContent = sc.interimInputTranscription.text;
     if (sc.inputTranscription && sc.inputTranscription.text) {
+      const frag = sc.inputTranscription.text;
       els.liveLine.textContent = "";
+      // Önceki cevap bitti ama notu henüz kapanmadı (dökümünün geciken parçaları bekleniyor) ve siz bu arada yeni bir
+      // söze başladınız: bu döküm yeni sözünüzdür. Cevap kapanırken silinmesin diye ayrı tutulur.
+      // (Yeni söz: gönderim yeniden başladı ya da o cevap başladıktan sonra konuştunuz. Aksi hâlde eski sözün geciken dökümüdür.)
+      const next = !isQuiz() && turn && turn.done && !turn.final && (turn.utterNo !== session.utterNo || session.spokeAt > turn.at);
+      if (next && !turn.nextTail) curMe = null;
       if (!curMe) curMe = (isQuiz() ? qLog : addLog)("me", "");
-      appendTo(curMe, sc.inputTranscription.text);
-      session.userTail = ((session.userTail || "") + sc.inputTranscription.text).slice(-300);
-      if (session.dialogOpen) {
-        session.dialogChars += sc.inputTranscription.text.length;
-        if (session.dialogChars > DIALOG_MAX_CHARS) session.dialogOpen = false;   // konu anlatımına döndünüz
+      appendTo(curMe, frag);
+      if (next) turn.nextTail = (turn.nextTail + frag).slice(-300);
+      else {
+        session.userTail = ((session.userTail || "") + frag).slice(-300);
+        if (session.dialogOpen) {
+          session.dialogChars += frag.length;
+          if (session.dialogChars > DIALOG_MAX_CHARS) { session.dialogOpen = false; if (els.title.textContent === "Dinliyor") listeningState(); }   // konu anlatımına döndünüz
+        }
       }
     }
     if (sc.interrupted) { session.serverTurnOpen = false; abortTurn(true); }
@@ -1180,7 +1314,17 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
   function chunkSec(b64, mime) { const m = /rate=(\d+)/.exec(mime || ""); const rate = m ? parseInt(m[1], 10) : OUT_RATE; return (Math.floor(b64.length * 3 / 4) >> 1) / rate; }
   function newTurn() {
     if (turn) finalizeTurn(turn, false);
-    turn = { queue: [], sec: 0, playedSec: 0, text: "", decided: false, play: false, asked: !!session.expectingAnswer, question: false, done: false, entry: null, timer: 0 };
+    const now = Date.now();
+    // Sustuktan ne kadar sonra cevap gelmeye başlıyor? (Düğmeyle ya da yazıyla sorulanların cevabı sayılmaz.)
+    if (!isQuiz() && !session.expectingAnswer && session.spokeAt > session.replyAt) {
+      const lag = now - session.spokeAt;
+      if (lag > 200 && lag < 15000) {
+        session.replyLag = session.replyLag ? 0.7 * session.replyLag + 0.3 * lag : lag;
+        stats.lagN++; stats.lagSum += lag; stats.lagMax = Math.max(stats.lagMax, lag);
+      }
+    }
+    session.replyAt = now;
+    turn = { queue: [], sec: 0, playedSec: 0, text: "", decided: false, play: false, asked: !!session.expectingAnswer, question: false, strict: false, done: false, entry: null, timer: 0, at: now, utterNo: session.utterNo, nextTail: "" };
     return turn;
   }
   function palAudio(b64, mime) {
@@ -1202,11 +1346,13 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     if (t.decided) return;
     if (isQuiz()) { decide(t, true); return; }   // soru modunda her söz hemen çalınır
     const txt = t.text.trim();
-    const gate = session.level >= 4 ? GATE_SEC : GATE_SEC_TX;
-    if (!t.question && (looksLikeQuestion(session.userTail) || inDialog())) t.question = true;
+    // Açık bir soru sordunuz: cevabın yazısı gecikse de "Tamam"dan uzun sürdüğü anlaşılınca çalınır
+    if (!t.strict && endsWithQuestion(session.userTail)) t.strict = true;
+    const gateSec = t.strict ? STRICT_GATE_SEC : session.level >= 4 ? GATE_SEC : GATE_SEC_TX;
+    if (!t.question && (t.strict || looksLikeQuestion(session.userTail) || inDialog())) t.question = true;
     const lower = txt.toLocaleLowerCase("tr");
     const maybeDisclaimer = DISCLAIMER_START.test(lower) && lower.length < 200;
-    if (t.asked || (txt && !maybeDisclaimer && !isTrivial(txt, t.question)) || (!txt && t.sec > gate)) decide(t, true);
+    if (t.asked || (txt && !maybeDisclaimer && !isTrivial(txt, t.question)) || (!txt && t.sec > gateSec)) decide(t, true);
   }
   function decide(t, play) {
     if (t.decided) return;
@@ -1218,7 +1364,8 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     if (play) {
       curMe = null; els.liveLine.textContent = "";
       t.entry = (isQuiz() ? qLog : addLog)("pal", t.text);
-      session.uiSpeaking = true; session.thinkingSince = 0;
+      session.uiSpeaking = true; session.thinkingSince = 0; session.playedAt = Date.now();
+      if (!isQuiz()) { stats.holdN++; stats.holdSum += session.playedAt - t.at; }
       speakingState();
       t.queue.forEach(([b, m]) => { playChunk(b, m); t.playedSec += chunkSec(b, m); });
     }
@@ -1230,15 +1377,19 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     if (!t) { if (!palSpeaking()) { session.thinkingSince = 0; listeningState(); } return; }
     t.done = true;
     // Döküm parçaları sesten biraz sonra gelebilir: karar ve not için kısa süre bekle.
-    t.timer = setTimeout(() => {
+    const settle = (last) => {
       if (!t.decided) {
         const txt = t.text.trim();
-        if (!t.question && (looksLikeQuestion(session.userTail) || inDialog())) t.question = true;
+        if (!t.strict && endsWithQuestion(session.userTail)) t.strict = true;
+        if (!t.question && (t.strict || looksLikeQuestion(session.userTail) || inDialog())) t.question = true;
+        // Yazısı henüz gelmediyse bir kez daha beklenir: kısa bir cevap, yazısı geciktiği için yutulmasın
+        if (!txt && !last && session.level < 4 && t.sec > 0.25) { t.timer = setTimeout(() => settle(true), 800); return; }
         // Yazısı hiç gelmeyen uzun bir cevap gerçek bir uyarı olabilir; kısa ve yazısızsa dolgudur.
-        decide(t, txt ? !isTrivial(txt, t.question) : t.sec > (session.level >= 4 ? GATE_SEC : 2.5));
+        decide(t, txt ? !isTrivial(txt, t.question) : t.sec > (t.strict ? STRICT_GATE_SEC : session.level >= 4 ? GATE_SEC : 2.5));
       }
       finalizeTurn(t, false);
-    }, 700);
+    };
+    t.timer = setTimeout(() => settle(false), 700);
   }
   function abortTurn(interrupted) {
     stopPlayback();
@@ -1268,13 +1419,37 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
       }
       if (!text) { t.entry.el.remove(); const i = log.indexOf(t.entry); if (i >= 0) log.splice(i, 1); saveSoon(); }
     }
+    const words = session.userTail;   // bu cevaptan önce söyledikleriniz
     if (turn === t) turn = null;
-    curMe = null; session.userTail = "";
+    // Bu arada yeni bir söze başladıysanız onun dökümü kalır (bkz. onServer)
+    session.userTail = t.nextTail;
+    if (!t.nextTail) curMe = null;
+    let again = "";
     // Dinleyici konuştuysa sohbet açılır; "söyleyecek bir şeyim yok" dediyse kapanır
-    if (t.play) { session.dialogOpen = true; session.dialogChars = 0; }
-    else if (t.decided) session.dialogOpen = false;
+    if (t.play) { session.dialogOpen = true; session.dialogChars = t.nextTail.length; session.nothingAt = 0; }
+    else if (t.decided) {
+      // Açık bir soru sordunuz ama dinleyici "Tamam" deyip geçti: soru bir kez de yazıyla sorulur, cevapsız kalmasın.
+      // (Sözü kesildiyse, soruyu düğmeyle sorduysanız ya da yeni bir söze başladıysanız gerekmez.)
+      const talking = gate.sending && gate.quietMs < 1000;   // şu anda konuşuyorsunuz
+      if (!interrupted && !t.asked && !t.nextTail && !talking && session.ready && !session.paused && isAsk(words)) again = words;
+      else { session.dialogOpen = false; if (!interrupted) session.nothingAt = Date.now(); }   // dinledi ama söyleyecek bir şeyi yoktu
+    }
     if (!palSpeaking()) { session.thinkingSince = 0; listeningState(); }
+    diagUpdate();
+    if (again) {
+      const filler = stripMarks(t.text).replace(/\s+/g, " ").trim().slice(0, 40);
+      askAgain(again, filler ? "Dinleyici soruya yalnızca “" + filler + "” dedi (bu duyurulmaz); soru yeniden soruldu." : "Dinleyicinin cevabı duyulmadı; soru yeniden soruldu.");
+    }
   }
+  // Soru cevapsız kaldı (dinleyici "Tamam" deyip geçti ya da hiçbir şey demedi): bir kez de yazıyla sorulur.
+  // Cevabı, düğmeyle sorulan sorularınki gibi bekletilmeden çalınır. Neden yeniden sorulduğu döküme yazılır.
+  function askAgain(words, why) {
+    const all = words.replace(/["“”«»]/g, "'").replace(/\s+/g, " ").trim(), q = all.slice(-140);
+    gate.sending = false; gate.ring = []; gate.hot = 0; gate.quietMs = 0; gate.speechMs = 0;   // sondaki sessizliğin gönderimi biter (akışı sendText kapatır)
+    session.userTail = ""; curMe = null;
+    sendText("Az önce sana bir soru sordum ama cevap vermedin. Son sözüm şuydu: \"" + (q.length < all.length ? "…" : "") + q + "\". Bu bir soruydu; az önce konuştuğumuz konuya göre kısa ve net cevap ver.", why);
+  }
+  const NOTHING_MS = 4000;   // dinleyicinin söyleyecek bir şeyi olmadığında bunu bildiren satırın ekranda kalma süresi
   function speakingState() {
     setState("speaking live", "Konuşuyor", isQuiz() ? "Cevabı biliyorsanız sözünü kesebilirsiniz." : "Söze girerseniz hemen susar.");
   }
@@ -1282,7 +1457,9 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     if (!session.running) return;
     if (session.paused) setState("paused", "Duraklatıldı", "Devam etmek için Devam et'e basın.");
     else if (isQuiz()) setState("live", "Cevabınızı bekliyor", "“Tekrar”, “geç”, “açıkla” ya da “dur” diyebilirsiniz.");
-    else setState("live", "Dinliyor", fmtSec(cfg.silence) + " saniye susmadan söz almaz.");
+    else setState("live", "Dinliyor", session.nothingAt && Date.now() - session.nothingAt < NOTHING_MS ? "Dinledi; ekleyecek bir şeyi yok."
+      : session.dialogOpen ? "Soru sorarsanız ya da kısa bir şey söylerseniz hemen cevaplar."   // sohbet: bkz. quickAfterMs
+      : (cfg.silence > 1.5 ? "Soruya hemen cevap verir; yoksa " : "") + fmtSec(cfg.silence) + " saniye susmadan söz almaz.");
   }
 
   function scheduleRollover(info) {
@@ -1321,6 +1498,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     if (why === "quizroll") setState("live", "Sıradaki sorular geliyor", "Birkaç saniye sürebilir.");
     else if (why !== "rollover") setState("live", "Yeniden bağlanıyor", isQuiz() ? "Birkaç saniye sürebilir." : "Anlatmaya devam edebilirsiniz; bu arada söyledikleriniz bekletiliyor.");
     session.contextLost = !session.handle;
+    if (session.contextLost && !isQuiz()) session.resumed = true;   // yeni oturum öncesini hatırlamaz: talimata bunu bildiren not eklenir
     for (let i = 0; i < 6 && session.running; i++) {
       if (i > 0) await new Promise(r => setTimeout(r, Math.min(8000, 500 * 2 ** (i - 1))));
       if (!session.running) return;
@@ -1362,8 +1540,10 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
       els.orb.style.setProperty("--out", Math.min(1, out * 7).toFixed(3));
       els.clock.textContent = elapsed();
       if (!isQuiz() && Date.now() - lecture.lastSave > 15000) saveLecture();   // sayfa aniden kapanırsa en fazla 15 sn kaybolsun
-      if (session.uiSpeaking && !(turn && turn.play && !turn.done) && !palSpeaking()) { session.uiSpeaking = false; listeningState(); }
-      if (session.thinkingSince && Date.now() - session.thinkingSince > 15000) { session.thinkingSince = 0; listeningState(); }
+      // Dinleyici sustu. Bu arada yeni bir cevap bekleniyorsa ("Düşünüyor") yazı olduğu gibi kalır.
+      if (session.uiSpeaking && !(turn && turn.play && !turn.done) && !palSpeaking()) { session.uiSpeaking = false; if (!session.thinkingSince) listeningState(); }
+      if (session.thinkingSince && Date.now() - session.thinkingSince > (session.thinkingMs || 15000)) { session.thinkingSince = 0; listeningState(); }
+      if (session.nothingAt && Date.now() - session.nothingAt >= NOTHING_MS) { session.nothingAt = 0; if (els.title.textContent === "Dinliyor") listeningState(); }
     }
     requestAnimationFrame(frame);
   }
@@ -2012,8 +2192,9 @@ Kurallar:
     let resumed = false;
     if (isQuiz()) quizBegin(plan, fresh === "wrong");
     else { resumed = !fresh && hasLecture(); if (!resumed) clearLecture(); }
-    Object.assign(session, { running: true, paused: false, ready: false, handle: null, level: levelFor(cfg.model), startedAt: Date.now(), reconnecting: false, buffer: [], textVia: "realtime", lastTextSent: null, retryText: null, levelNoted: false, uiSpeaking: false, thinkingSince: 0, contextLost: false, expectingAnswer: false, userTail: "", dialogOpen: false, dialogChars: 0, serverTurnOpen: false });
+    Object.assign(session, { running: true, paused: false, ready: false, handle: null, level: levelFor(cfg.model), startedAt: Date.now(), reconnecting: false, buffer: [], textVia: "realtime", lastTextSent: null, retryText: null, levelNoted: false, uiSpeaking: false, thinkingSince: 0, contextLost: false, expectingAnswer: false, userTail: "", dialogOpen: false, dialogChars: 0, serverTurnOpen: false, nothingAt: 0, utterNo: 0, spokeAt: 0, replyAt: 0, playedAt: 0, replyLag: 0, thinkingMs: 15000, resumed: resumed });
     resetGate();
+    Object.assign(stats, { lagN: 0, lagSum: 0, lagMax: 0, holdN: 0, holdSum: 0 });
     setState("live", "Bağlanıyor", "Birkaç saniye sürebilir.");
     session.reconnecting = true; // bağlanırken söylenenler bekletilsin
     try {
