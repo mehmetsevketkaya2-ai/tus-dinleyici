@@ -46,6 +46,11 @@ denemede bir kez kopyalar. Asıl sayfanın kayıtlarına hiçbir zaman yazmaz.
   kullanıcı "4 Deneme tamam yayına geçebilir" dedi ve dördü birden `index.html` dosyasına geçti. `index.html`
   artık 4 Ekim sürümü + notlar + bu dört değişikliktir ("Sürüm: 6 Ekim 2026 (2)"). Geri dönmek gerekirse:
   yalnız notları içeren önceki ana sayfa `c1567ed` sürümündeki `index.html` dosyasıdır.
+- 6 Ekim 2026: `deneme.html` üzerinde **5-emir-uslup** deneniyor: iki değişiklik birlikte (aşağıda): emirler ve
+  sıcak üslup. Kullanıcının "tamam" demesi bekleniyor; denince ikisi birden `index.html` dosyasına geçer. Biri
+  sorun çıkarırsa yalnızca o çıkarılıp deneme sayfası yeniden kurulur (ikisi birbirinden bağımsız yazıldı).
+  Birlikte koymayı kullanıcı bu ikisi için ayrıca istemedi; "tek tek zaman alır denemesi" sözüne dayanılarak
+  konuldu ve kendisine bildirildi. Ayrı ister derse ayrılır.
 
 ## Çözülen sorun: ses kulaklıkta kesiliyordu (sayfadan değildi)
 
@@ -86,3 +91,56 @@ Buradan gerçek Google ile denenemeyen, yalnızca kullanıcının görebileceği
 da "Tamam" diyebilir (5 Ekim'de bir kez oldu); yeniden sorma gereksiz yerde devreye girebilir (ders sırasında
 kendi kendine sorulan sorularda). Kullanıcı dördünü tablette deneyip onayladı; bunlarla ilgili bir şikâyet
 bildirmedi. Bildirirse önce dökümdeki "… soru yeniden soruldu" satırlarına bakılır.
+
+## Deneme sayfasındaki iki değişiklik (5-emir-uslup)
+
+İkisi birbirinden bağımsızdır; biri çıkarılırsa öbürü kalır.
+
+### 1. Emirler
+
+Kullanıcı (6 Ekim): "Bir emir verirsem veya direktif onu kesin yapsin". Gösterdiği sorun: dinleyici bir cevap
+verdi, kullanıcı "Devam et", "Son söylediğine devam etsene" dedi; dinleyici sustu. Üsteleyince "Rolüm gereği …
+sadece yanlış bilgi olduğunda veya soru sorduğunuzda müdahale ediyorum", "anlatımı tekrar etmiyorum" dedi.
+
+Neden: hazır talimat konuşulacak durumları tek tek sayıyor, bunların dışında "Tamam" dedirtiyor ve "tekrar etme"
+diyordu; emir bu durumların arasında yoktu. Sayfa da "Tamam"ı duyurmuyor. 4 Ekim sürümünde de böyleydi; bugünkü
+değişikliklerden değildir. Kullanıcı daha önce "gerekirse son dediğini tekrarla derim" demişti; dinleyicinin
+emre uyup uymayacağı denenmeden varsayılmıştı.
+
+Yapılan:
+- Hazır talimatta emir beşinci durumdur ("Bu beş durumun dışında … Tamam"; "aday istemedikçe … tekrar etme").
+- Her talimata (düzenlenmiş olana da) bir not eklenir: her emir yerine getirilir, "Tamam" denmez, rol anlatılmaz.
+  "Devam et / son söylediğine devam et / tekrar et": dinleyici konuyla ilgili son sözünü sürdürür ya da baştan
+  söyler ("sesiniz geliyor" gibi konu dışı cevabını değil). "Dur / sus / bekle"de yalnızca "Tamam" der.
+- Sayfa güvencesi: söz bir emirle bittiyse ve dinleyici yalnızca dolgu ya da onay sözü söylediyse ("Tamam",
+  "Tabii") ya da 4 sn hiç ses gelmediyse istek bir kez yazıyla iletilir; "devam et / tekrar et" türünde konuyla
+  ilgili son söz de eklenir. Nedeni döküme yazılır ("… istek yeniden iletildi").
+- Sayfa neyi emir sayar: son cümle en çok 80 karakterdir ve emir kipiyle biter ("devam et(sene)", "tekrar et",
+  "tekrarla", "bir daha söyle", "açıkla", "özetle", "anlat", "say", "sırala", "örnek ver", "soru sor", "hatırlat" …;
+  "tekrar eder misin?" ve tek başına "tekrar" da). Dinleyici az önce konuşmuşken "duymadım", "anlamadım" da
+  "yeniden söyle" isteği sayılır. "Kontrol et", "değerlendir" gibi emirlerde kısa onay ("Evet, doğru.") cevaptır.
+  "Dur / sus / bekle", olumsuzlar ("devam etme") ve anlatım cümleleri ("devam edilir", "tekrarlar") sayılmaz.
+- İstek üzerine yinelenen söz notlara ikinci kez yazılmaz; yarıda kalmış not ("… …") tamamlanır.
+
+Bilinen sınır: dinleyici konuşurken söylenen 1,5 sn'den kısa söz, kullanıcının kendi kuralıyla, dinleyici cümlesini
+bitirince iletilir. Yani kısa bir "dur" onu anında susturmaz; anında susturmak için daha uzun konuşmak gerekir.
+
+### 2. Sıcak üslup
+
+Kullanıcı (6 Ekim): dinleyici "daha samimi … ciddi ama … meslektaşmış gibi daha sıcakkanlı, daha doğal, beraber
+çalıştığımız bir arkadaş gibi" olsun.
+
+- Her talimata bir üslup notu eklenir: "sen" diye hitap, sıcak ve doğal ses tonu, gündelik Türkçe; ciddiyet korunur,
+  övgü ve resmî kalıp yok. Yalnızca nasıl konuştuğunu değiştirir; ne zaman ve ne kadar konuşacağı değişmez.
+- "Benzer ses" notundaki örnek "… mi dedin?" oldu.
+- Sayfanın üç ayıklayıcısı "sen" diline göre genişletildi: nota alınmayan "… mi dedin / demiştin?" sorusu; "nerede
+  kalmıştık" için verilen son bölüme alınmayan "sesin geliyor" cevabı; ders sırasında susturulan "haklısın",
+  "doğru söylüyorsun" gibi onaylar (soruya cevapken çalınır).
+- Soru çöz bölümünün talimatı değişmedi (oradaki kalıp sözleri sayfa tanıyor).
+
+### Buradan denenemeyen, yalnızca kullanıcının görebileceği şeyler
+
+Dinleyici emre gerçekten uyuyor mu; yazıyla iletilen isteğe de "Tamam" diyebilir (soruda 5 Ekim'de bir kez oldu);
+bir anlatım cümlesi emir sanılıp gereksiz yere istek iletilebilir; dinleyici "sen" diyor ve daha sıcak mı; daha çok
+konuşmaya başladı mı (ders sırasında gereksiz tepki, uzayan cevaplar). Şikâyet gelirse önce dökümdeki
+"… istek yeniden iletildi" satırlarına ve soluk ("susturuldu") satırlara bakılır.
