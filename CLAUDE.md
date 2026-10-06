@@ -37,34 +37,36 @@ denemede bir kez kopyalar. Asıl sayfanın kayıtlarına hiçbir zaman yazmaz.
 - 6 Ekim 2026: **1-notlar** (Notlar bölümünde yalnızca en son not, tek satır; "Tümünü göster" ile açılır)
   deneme sayfasında denendi, kullanıcı "tamam" dedi ve `index.html` dosyasına geçti. `index.html` artık
   4 Ekim sürümü + bu değişikliktir ("Sürüm: 6 Ekim 2026").
-- 6 Ekim 2026: `deneme.html` üzerinde **2-sesyolu** deneniyor. Yalnızca kayıt tutar, davranışı değiştirmez:
-  döküme "Ses yolu · …" satırları yazar, "Ses gelmiyor" düğmesi o anki durumu bir kutuda gösterir ve kopyalar.
-  Kullanıcının bir sonraki ses kaybında kutunun görüntüsünü ya da metnini göndermesi bekleniyor.
-  Bu kayıt `index.html` dosyasına geçmeyecek; işi bitince kaldırılır.
+- 6 Ekim 2026: **2-sesyolu** (yalnızca kayıt: "Ses yolu · …" satırları ve "Ses gelmiyor" düğmesi) deneme
+  sayfasında kullanıldı ve işi bitti; `index.html` dosyasına geçmedi. Gerekirse `0833bcd` sürümündeki
+  `deneme.html` dosyasından geri alınır.
+- 6 Ekim 2026: `deneme.html` üzerinde **3-yarimsaniye** deneniyor: bekleme süresi 0,5 sn sabit,
+  "Sustuğunuzda kaç saniye beklesin?" ayarı kalktı. Kullanıcının "tamam" demesi bekleniyor.
 
-## Açık sorun: ses kulaklıkta kesiliyor
+## Çözülen sorun: ses kulaklıkta kesiliyordu (sayfadan değildi)
 
-Kullanıcının gözlemi (6 Ekim): oturum sürerken, ona göre uzun bir araya girmeden sonra, dinleyicinin sesi
-kulaklıkta kesiliyor ve oturum yeniden başlatılana kadar gelmiyor. O sırada sayfa olağan çalışıyor: cevap
-dökümde yazıyor, durum "Konuşuyor" olup "Dinliyor"a dönüyor, kullanıcının sözleri de yazıya dökülüyor.
-5 Ekim gecesi aynı belirti vardı ve Android "Arama sessize alındı, ses seviyesini artırın" uyarısı göstermişti.
+5-6 Ekim'de dinleyicinin sesi kulaklıkta kesiliyordu: sayfa cevabı çalıyor ("Konuşuyor", sonra "Dinliyor"),
+döküme yazıyor, ama duyulmuyordu. 5 Ekim gecesi Android "Arama sessize alındı, ses seviyesini artırın" uyarısı
+göstermişti. 6 Ekim'deki kayıt, sayfanın sesi çıkardığını (çıkış düzeyi 0,19-0,28, bekletme yok, ses saati
+yürüyor) ve sayfa tarafında hiçbir şeyin değişmediğini gösterdi.
 
-- Sayfanın bekletme mantığı değil: öyle olsaydı durum "Konuşuyor"da kalırdı. Taklit ortamda 178 cevap ve
-  36 araya girmeyle sayfa sesi hiç kaybetmedi.
-- Şüphe (doğrulanmadı): mikrofon açıkken Android sesi kulaklığa arama kanalından verir; bu kanal oturum
-  ortasında düşüyor, Android tabletin kendi mikrofonuna ve hoparlörüne geçiyor, tabletin arama sesi de sıfırda.
-- Doğrulanırsa sonraki adım: sayfa mikrofonu yeniden açıp kulaklık kanalını kendiliğinden geri getirsin.
-- Bu sorunda iki kez yanlış tahmin yürütüldü ("Tamam" diyor; bekletme takılıyor). Kayıt görülmeden yeni
-  tahminle değişiklik yapılmaz.
+Kullanıcı tabletin Bluetooth ayarlarında, Jabra Evolve2 55 için "Ses seviyesini telefonla senkronize et"
+seçeneğini açınca ses geri geldi (kendi deyişiyle "düzeldi sanırım"). Mikrofon açıkken ses kulaklığa arama
+kanalından gider; o kanalın ses düzeyi tabletle eşleşmediği için kısılı kalıyordu. Yeniden olursa önce bu ayara
+ve oturum sürerken ses düzeyine bakılır.
+
+Bu sorunda sayfa üç kez boşuna suçlandı ("Tamam" diyor; bekletme takılıyor; tabletin mikrofonuna geçiyor).
+Ders: ses duyulmuyorsa önce sayfanın sesi çıkarıp çıkarmadığı ölçülür, tahminle değişiklik yapılmaz.
 
 ## Sırada (tek tek, her biri deneme sayfasında)
 
-1. Kullanıcı istedi (6 Ekim): bekleme süresi 0,5 sn sabit olsun, "Sustuğunuzda kaç saniye beklesin?" ayarı
-   kalksın. Kullanıcı yalnızca 0,5 sn kullanıyor; bundan sonraki bütün mantık yalnızca 0,5 sn'ye göre tasarlanır.
-2. Kullanıcının araya girme kuralları (6 Ekim):
+Kullanıcı yalnızca 0,5 sn bekleme kullanıyor; bütün mantık yalnızca 0,5 sn'ye göre tasarlanır.
+
+1. **Her soruya cevap** (6 Ekim): dinleyici bir soruya "Tamam" deyip geçmesin, her soru duyulur bir cevap alsın.
+2. **Araya girme kuralları** (6 Ekim):
    - Kısa söz (soru olsun olmasın): dinleyici cümlesini bitirir; sayfa sözü saklar, o bitince iletir. Soruysa
      cevaplar, yorumsa tepki verir. Şu an kısa söz atılıyor.
    - Uzun söz: kalan cevap bırakılır; o an söylenen değerlendirilir. Yanlışsa düzeltir, soruysa cevaplar,
      doğru anlatımsa susar.
-3. Şimdilik bekliyor (istemeden başlanmaz): "Nerede kalmıştık?" sorusunda kalınan konuyu söylemesi
-   ("Kaldığın yerden devam et" ile sürdürüldüğünde de; "Yeni ders"te unutur).
+3. **"Nerede kalmıştık?"** (6 Ekim): kalınan yeri tek cümleyle hatırlatsın ("Kaldığın yerden devam et" ile
+   sürdürüldüğünde de; "Yeni ders"te unutur).
