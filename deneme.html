@@ -111,6 +111,9 @@ input[type="text"], input[type="password"], input[type="number"], select, textar
 }
 textarea { font-size: 0.88rem; line-height: 1.5; min-height: 220px; resize: vertical; }
 .hint { font-size: 0.84rem; color: var(--muted); }
+/* Ses yolu kaydı (deneme): "Ses gelmiyor"a basılınca o anki durum burada da görünür */
+.route-box { margin-top: 12px; padding: 10px 12px; border-radius: 10px; border: 1px dashed var(--muted); font-size: 0.8rem; line-height: 1.45; text-align: left; overflow-wrap: anywhere; }
+.route-box #routeText { margin-top: 6px; white-space: pre-wrap; user-select: text; -webkit-user-select: text; }
 
 .alert { border-radius: 10px; padding: 12px 14px; font-size: 0.92rem; background: var(--err-soft); color: var(--ink); border: 1px solid color-mix(in srgb, var(--err) 35%, transparent); text-align: left; width: 100%; }
 .alert b { color: var(--err); }
@@ -178,7 +181,7 @@ a { color: var(--hema); }
 </head>
 <body>
 <div class="wrap">
-  <div id="trialBar" style="margin:0 0 14px;padding:10px 14px;border-radius:10px;background:#fde68a;color:#422006;font:600 14px/1.45 system-ui,sans-serif">Deneme sayfası · Denenen değişiklik: notlar tek satır. Yalnızca en son not görünür; hepsi için “Tümünü göster”e dokunun. Anahtar ve ayarlar asıl sayfadan alınır. Notlar burada ayrı tutulur; asıl sayfadakilere dokunulmaz. <a href="https://mehmetsevketkaya2-ai.github.io/tus-dinleyici/" style="color:inherit">Asıl sayfaya dön</a></div>
+  <div id="trialBar" style="margin:0 0 14px;padding:10px 14px;border-radius:10px;background:#fde68a;color:#422006;font:600 14px/1.45 system-ui,sans-serif">Deneme sayfası · Denenen değişiklik: ses yolu kaydı. Dinleyicinin sesi kesilirse “Ses gelmiyor” düğmesine basın, çıkan kutunun ekran görüntüsünü alın. Anahtar ve ayarlar asıl sayfadan alınır. Notlar burada ayrı tutulur; asıl sayfadakilere dokunulmaz. <a href="https://mehmetsevketkaya2-ai.github.io/tus-dinleyici/" style="color:inherit">Asıl sayfaya dön</a></div>
   <header>
     <h1>TUS Dinleyici <small id="tagline">Siz anlatın, o dinlesin. Yalnızca önemli bir eksik ya da yanlış olduğunda konuşur.</small></h1>
     <div class="clock" id="clock" aria-label="Süre">00:00</div>
@@ -206,9 +209,11 @@ a { color: var(--hema); }
         <button id="pauseBtn" type="button" disabled>Duraklat</button>
         <button id="checkBtn" type="button" disabled title="Şu ana kadar anlattıklarınızda kritik bir eksik ya da yanlış var mı, sorar">Eksik var mı?</button>
         <button id="doneBtn" type="button" disabled title="Anlatımı bitirir ve atladığınız önemli noktaları ister">Bitti, eksikleri söyle</button>
+        <button id="noSoundBtn" type="button" disabled title="Dinleyicinin sesi kulaklığa gelmiyorsa basın: ses yolunun o anki durumu kaydedilir">Ses gelmiyor</button>
         <button id="repeatBtn" type="button" disabled hidden title="Sesle “tekrar” demekle aynı">Tekrar oku</button>
         <button id="skipBtn" type="button" disabled hidden title="Sesle “geç” demekle aynı">Geç</button>
       </div>
+      <div class="route-box" id="routeBox" hidden><b>Ses yolu kaydı</b> <button class="small" id="routeCopy" type="button">Kopyala</button> <span class="hint">Bu kutunun ekran görüntüsünü alın ya da Kopyala'ya basıp yapıştırın. Sonra oturumu yeniden başlatabilirsiniz.</span><div id="routeText"></div></div>
       <div class="topic" id="topicBox">
         <label for="topic">Bugünkü konu <span class="hint">(isteğe bağlı)</span></label>
         <input type="text" id="topic" placeholder="ör. Sindirim — gastrointestinal hormonlar" autocomplete="off">
@@ -345,7 +350,7 @@ a { color: var(--hema); }
         <span><b>Kulaklık kullanın.</b> Hoparlörden çıkan ses mikrofona geri dönerse dinleyici kendi sesini sizin sözünüz sanabilir.</span>
         <span>Mikrofon izni sorulursa <b>İzin ver</b>'e basın. Sayfayı Chrome ya da Edge ile açın.</span>
       </div>
-      <div class="hint" style="margin-top:14px">Deneme sayfası (1-notlar): 4 Ekim sürümü + denenen değişiklik. <a href="https://mehmetsevketkaya2-ai.github.io/tus-dinleyici/">Asıl sayfaya dön</a></div>
+      <div class="hint" style="margin-top:14px">Deneme sayfası (2-sesyolu): asıl sayfa (6 Ekim 2026) + denenen değişiklik. <a href="https://mehmetsevketkaya2-ai.github.io/tus-dinleyici/">Asıl sayfaya dön</a></div>
       <div class="hint" id="diag"></div>
     </details>
   </section>
@@ -423,7 +428,7 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
   // Deneme sayfası: kayıtlar ayrı tutulur ("tusddeneme."); asıl sayfanın kayıtları yalnızca okunur, onlara yazılmaz.
   // Anahtar ve ayarlar her açılışta asıl sayfadan alınır. Notlar ve döküm, her yeni denemede bir kez asıl sayfadan
   // kopyalanır (değişiklik hemen görülebilsin diye); sonrası ayrıdır.
-  const TRIAL_ID = "1-notlar";
+  const TRIAL_ID = "2-sesyolu";
   try {
     ["key", "silence", "voice", "model", "topic", "prompt6", "levels", "qkey", "exmodel", "lockrun"].forEach(k => { const v = localStorage.getItem("tusd." + k); if (v !== null) localStorage.setItem("tusddeneme." + k, v); else localStorage.removeItem("tusddeneme." + k); });
     if (localStorage.getItem("tusddeneme.trial") !== TRIAL_ID) {
@@ -458,7 +463,8 @@ Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
     quizKey: $("quizKey"), quizKeyStatus: $("quizKeyStatus"), exModel: $("exModel"), lockRun: $("lockRun"),
     apiKey: $("apiKey"), keyStatus: $("keyStatus"), settings: $("settings"), silence: $("silence"), silenceOut: $("silenceOut"),
     voice: $("voice"), model: $("model"), prompt: $("prompt"), promptStatus: $("promptStatus"), diag: $("diag"),
-    notesToggle: $("notesToggle")
+    notesToggle: $("notesToggle"),
+    noSound: $("noSoundBtn"), routeBox: $("routeBox"), routeText: $("routeText"), routeCopy: $("routeCopy")
   };
   const cfg = {
     key: store.get("key", ""),
@@ -1946,9 +1952,9 @@ Kurallar:
     try { if (window.MediaMetadata) navigator.mediaSession.metadata = new MediaMetadata({ title: isQuiz() ? "Soru modu" : "Dinleyici", artist: "TUS Dinleyici" }); } catch {}
     const on = (a, fn) => { try { navigator.mediaSession.setActionHandler(a, fn); } catch {} };
     // Kilit ekranındaki düğmeler ve kulaklık düğmesi: duraklat / devam et / durdur
-    on("pause", () => { if (session.running && !session.paused) els.pause.onclick(); });
-    on("play", () => { if (session.running && session.paused) els.pause.onclick(); if (keep.on && keep.el && keep.el.paused) keep.el.play().catch(() => {}); });
-    on("stop", () => { if (session.running) stop(false); });
+    on("pause", () => { routeEvent("kulaklık ya da kilit ekranı düğmesi: duraklat"); if (session.running && !session.paused) els.pause.onclick(); });
+    on("play", () => { routeEvent("kulaklık ya da kilit ekranı düğmesi: devam et"); if (session.running && session.paused) els.pause.onclick(); if (keep.on && keep.el && keep.el.paused) keep.el.play().catch(() => {}); });
+    on("stop", () => { routeEvent("kulaklık ya da kilit ekranı düğmesi: durdur"); if (session.running) stop(false); });
     mediaSessionState();
   }
   function keepAliveStart() {
@@ -2002,6 +2008,188 @@ Kurallar:
       : "<b>Ekran kapalıyken dinleme durdu.</b> Ayarlar'dan “Ekran kilitliyken de çalışmayı dene” seçeneğini açabilirsiniz.");
     else sysLog("Ekran kapalıyken " + fmtClock(dur) + " boyunca çalışmaya devam etti.");
   }
+
+  // ---------- Ses yolu kaydı (deneme) ----------
+  // Sorun: dinleyici cevap veriyor, sayfa da çalıyor ("Konuşuyor" yazıyor, bitince "Dinliyor"a dönüyor) ama ses kulaklıkta
+  // duyulmuyor; oturum yeniden başlatılınca düzeliyor. Sayfa, çıkardığı sesin hangi aygıta gittiğini göremez; ama ses yolu
+  // değiştiğinde iz bırakan şeyleri kaydedebilir. Bu bölüm yalnızca kayıt tutar, oturumun davranışını değiştirmez:
+  // - mikrofonun adı, durumu, ayarları; tarayıcının gördüğü ses aygıtları
+  // - mikrofondan gelen sesin bandı: Bluetooth kulaklığın mikrofonu dar bantlıdır (en çok 8 kHz), tabletin kendi mikrofonu
+  //   geniş bantlı. Bant birden genişlerse ses yolu kulaklıktan tablete geçmiş demektir.
+  // - çıkışın gecikmesi ve kanal sayısı (aygıta göre değişir), ses saatinin yürüyüp yürümediği
+  // - sistemin sayfanın arka plan sesini duraklatması, kulaklık ya da kilit ekranı düğmeleri
+  // Değişiklikler döküme "Ses yolu · …" diye yazılır; "Ses gelmiyor" düğmesi o anki durumu başlangıçtakiyle birlikte yazar.
+  const route = { on: false, timer: 0, t0: 0, lines: 0, ev: [], f: null, sp: null, spN: 0, qt: null, qtN: 0, ref: null, shift: 0, base: "", out: null, outShift: 0,
+    clockW: 0, clockC: 0, clockBad: 0, track: null, ctx: null, devHooked: false, keepHooked: false, keepPaused: false, devTimer: 0, lvl: [], playedAt: 0, played0: 0, err: false, ua: "" };
+  const dB = (x) => x > 0 ? Math.round(10 * Math.log10(x)) : -200;
+  const sn2 = (x) => (Math.round(x * 100) / 100).toLocaleString("tr-TR");
+  function routeLog(text) {
+    route.ev.push(elapsed() + " " + text); if (route.ev.length > 10) route.ev.shift();
+    if (route.lines++ < 40) sysLog("Ses yolu · " + text + " (" + elapsed() + ")");
+  }
+  function routeEvent(text) { try { if (route.on) routeLog(text); } catch {} }
+  function routeMic() {
+    const tr = audio.stream && audio.stream.getAudioTracks()[0];
+    if (!tr) return "mikrofon yok";
+    let st = {}; try { st = tr.getSettings ? tr.getSettings() : {}; } catch {}
+    const bits = ["“" + (tr.label || "adsız") + "”", tr.readyState === "live" ? (tr.muted ? "SUSTURULMUŞ" : "açık") : "KAPANMIŞ"];
+    if (st.deviceId) bits.push("kimlik " + String(st.deviceId).slice(0, 4));
+    if (st.sampleRate) bits.push(Math.round(st.sampleRate / 1000) + " kHz");
+    if (typeof st.latency === "number") bits.push("gecikme " + sn2(st.latency) + " sn");
+    return "mikrofon " + bits.join(", ");
+  }
+  function routeBand() {
+    const p = [];
+    if (route.sp && route.spN >= 4) p.push("konuşurken 4–7 kHz " + Math.round(route.sp[1] - route.sp[0]) + " dB, 9–14 kHz " + Math.round(route.sp[2] - route.sp[0]) + " dB");
+    if (route.qt && route.qtN >= 4) p.push("sessizken 9–14 kHz " + Math.round(route.qt[2]) + " dB");
+    return "mikrofon bandı: " + (p.length ? p.join("; ") : "henüz ölçülemedi");
+  }
+  function routeOutNow() {
+    const c = audio.ctx; if (!c) return null;
+    let lat = null, base = null, ch = null, sink = "";
+    try { if (typeof c.outputLatency === "number") lat = c.outputLatency; } catch {}
+    try { if (typeof c.baseLatency === "number") base = c.baseLatency; } catch {}
+    try { ch = c.destination.maxChannelCount; } catch {}
+    try { if (c.sinkId !== undefined) sink = typeof c.sinkId === "string" ? c.sinkId : (c.sinkId && c.sinkId.type) || ""; } catch {}
+    return { lat, base, ch, state: c.state, rate: c.sampleRate, sink };
+  }
+  function routeOutText(o) {
+    if (!o) return "çıkış yok";
+    const bits = [o.state === "running" ? "çalışıyor" : "DURUM: " + o.state];
+    if (o.ch != null) bits.push(o.ch + " kanal");
+    if (o.lat != null) bits.push("gecikme " + sn2(o.lat) + " sn");
+    if (o.base != null) bits.push("taban " + sn2(o.base) + " sn");
+    bits.push(Math.round(o.rate / 1000) + " kHz");
+    if (o.sink) bits.push("aygıt " + String(o.sink).slice(0, 8));
+    return "çıkış " + bits.join(", ");
+  }
+  async function routeDevices() {
+    try {
+      const all = await navigator.mediaDevices.enumerateDevices();
+      const names = (kind) => all.filter(d => d.kind === kind && d.deviceId !== "default" && d.deviceId !== "communications").map(d => "“" + (d.label || "adsız") + "”").join(", ") || "yok";
+      return "girişler: " + names("audioinput") + "; çıkışlar: " + names("audiooutput");
+    } catch { return "aygıtlar okunamadı"; }
+  }
+  function routePage() {
+    const mx = route.lvl.length ? Math.max.apply(null, route.lvl) : 0;
+    const bits = [audio.paused ? "BEKLETİYOR (" + audio.held.length + " parça)" : "bekletme yok"];
+    bits.push("son 15 sn'de sayfanın çıkardığı en yüksek ses " + sn2(mx));
+    if (route.playedAt) bits.push("son cevap parçası " + Math.round((Date.now() - route.playedAt) / 1000) + " sn önce çalındı");
+    bits.push(keep.on ? (keep.el && keep.el.paused ? "arka plan sesi DURAKLAMIŞ" : "arka plan sesi çalıyor") : "arka plan sesi kapalı");
+    bits.push("ses saati " + (route.clockBad >= 3 ? "DURMUŞ" : "yürüyor"));
+    return "sayfa: " + bits.join(", ");
+  }
+  function routeNow() { return [routeMic(), routeBand(), routeOutText(routeOutNow()), routePage()].join(" · "); }
+  function routeTick() {
+    try {
+      if (!route.on || !audio.ctx) return;
+      const now = Date.now(), c = audio.ctx;
+      // Mikrofon yeniden açıldıysa (ekran kilidinden dönüş) yeni hat izlenir
+      const tr = audio.stream && audio.stream.getAudioTracks()[0];
+      if (tr && tr !== route.track) {
+        const first = !route.track; route.track = tr;
+        tr.addEventListener("mute", () => routeEvent("mikrofonu sistem susturdu"));
+        tr.addEventListener("unmute", () => routeEvent("mikrofon geri geldi"));
+        tr.addEventListener("ended", () => routeEvent("mikrofonu sistem kapattı"));
+        if (!first) routeLog("mikrofon yeniden açıldı: " + routeMic());
+      }
+      if (c !== route.ctx) { route.ctx = c; c.addEventListener("statechange", () => routeEvent("ses çıkışının durumu: " + c.state)); }
+      // Sayfanın çıkardığı ses ve son çalınan parça
+      route.lvl.push(rms(audio.outAn)); if (route.lvl.length > 60) route.lvl.shift();
+      if ((audio.played || 0) !== route.played0) { route.played0 = audio.played || 0; route.playedAt = now; }
+      // Ses saati yürüyor mu
+      if (!route.clockW) { route.clockW = now; route.clockC = c.currentTime; }
+      else if (now - route.clockW >= 1000) {
+        const ok = c.state !== "running" || c.currentTime - route.clockC > 0.3;
+        if (!ok) { if (++route.clockBad === 3) routeLog("ses saati DURDU: tarayıcı sesi çalmıyor"); }
+        else { if (route.clockBad >= 3) routeLog("ses saati yeniden yürüyor"); route.clockBad = 0; }
+        route.clockW = now; route.clockC = c.currentTime;
+      }
+      // Çıkış: kanal sayısı ya da gecikme belirgin değiştiyse
+      const o = routeOutNow();
+      if (o && route.out) {
+        const latCh = o.lat != null && route.out.lat != null && Math.abs(o.lat - route.out.lat) > Math.max(0.04, 0.3 * Math.max(o.lat, route.out.lat));
+        if (o.ch !== route.out.ch || latCh) { if (++route.outShift >= 4) { routeLog("ÇIKIŞ DEĞİŞTİ: " + routeOutText(route.out) + " → " + routeOutText(o)); route.out = o; route.outShift = 0; } }
+        else route.outShift = 0;
+      } else if (o) route.out = o;
+      // Mikrofon bandı
+      const an = audio.micAn;
+      if (an) {
+        if (!route.f || route.f.length !== an.frequencyBinCount) route.f = new Float32Array(an.frequencyBinCount);
+        const level = rms(an);
+        an.getFloatFrequencyData(route.f);
+        const hz = c.sampleRate / 2 / route.f.length;
+        const band = (a, b) => { let q = 0, n = 0; for (let i = Math.max(1, Math.round(a / hz)); i <= Math.min(route.f.length - 1, Math.round(b / hz)); i++) { const d = route.f[i]; if (isFinite(d)) q += Math.pow(10, d / 10); n++; } return n ? q / n : 0; };
+        // Ortalama dB üzerinden tutulur: bant genişlese de daralsa da aynı hızla (1-2 sn konuşmada) izlenir
+        const v = [dB(band(300, 3400)), dB(band(4000, 7000)), dB(band(9000, 14000))];
+        if (level > 0.02) {
+          route.sp = route.sp ? route.sp.map((x, i) => x * 0.85 + v[i] * 0.15) : v; route.spN++;
+          if (route.spN >= 16) {
+            const hi = Math.round(route.sp[2] - route.sp[0]), mid = Math.round(route.sp[1] - route.sp[0]);
+            if (!route.ref) route.ref = { hi, mid };
+            else if (Math.abs(hi - route.ref.hi) >= 15 || Math.abs(mid - route.ref.mid) >= 15) {
+              if (++route.shift >= 12) {
+                const dHi = hi - route.ref.hi, dMid = mid - route.ref.mid, up = Math.abs(dHi) >= Math.abs(dMid) ? dHi > 0 : dMid > 0;
+                routeLog("MİKROFONUN BANDI DEĞİŞTİ: 4–7 kHz " + route.ref.mid + " → " + mid + " dB, 9–14 kHz " + route.ref.hi + " → " + hi + " dB (" + (up ? "genişledi: ses tabletin kendi mikrofonundan geliyor olabilir" : "daraldı: ses kulaklığın mikrofonuna geçmiş olabilir") + ")");
+                route.ref = { hi, mid }; route.shift = 0;
+              }
+            } else route.shift = 0;
+          }
+        } else if (level < 0.006) { route.qt = route.qt ? route.qt.map((x, i) => x * 0.85 + v[i] * 0.15) : v; route.qtN++; }
+      }
+      // Başlangıç satırı: birkaç saniye konuşulduktan sonra (20 sn içinde hiç konuşulmadıysa o zaman) bir kez
+      if (!route.base && (route.spN >= 16 || now - route.t0 > 20000)) {
+        route.base = routeNow();
+        routeDevices().then(d => { if (route.on) { route.base += " · " + d; routeLog("başlangıç: " + route.base); } });
+      }
+    } catch (e) { if (!route.err) { route.err = true; try { sysLog("Ses yolu kaydı tutulamadı: " + (e && e.message || e)); } catch {} } }
+  }
+  function routeStart() {
+    try {
+      Object.assign(route, { on: true, t0: Date.now(), lines: 0, ev: [], sp: null, spN: 0, qt: null, qtN: 0, ref: null, shift: 0, base: "", out: null, outShift: 0,
+        clockW: 0, clockC: 0, clockBad: 0, track: null, keepPaused: false, lvl: [], playedAt: 0, played0: audio.played || 0, err: false });
+      els.noSound.disabled = false; els.routeBox.hidden = true;
+      // Tarayıcının ve tabletin sürümü (ses yolunu tarayıcı sürümüne göre farklı yönetiyor): kayda bir kez eklenir
+      if (!route.ua) {
+        const m = /Chrome\/(\d+)/.exec(navigator.userAgent);
+        route.ua = m ? "Chrome " + m[1] : "tarayıcı bilinmiyor";
+        try {
+          const d = navigator.userAgentData;
+          if (d && d.getHighEntropyValues) d.getHighEntropyValues(["platformVersion", "model"]).then(h => { route.ua += ", " + (d.platform || "sistem") + " " + (h.platformVersion || "?") + (h.model ? ", " + h.model : ""); }).catch(() => {});
+        } catch {}
+      }
+      if (!route.devHooked && navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
+        route.devHooked = true;
+        navigator.mediaDevices.addEventListener("devicechange", () => {
+          if (!route.on) return;
+          clearTimeout(route.devTimer);
+          route.devTimer = setTimeout(() => routeDevices().then(d => routeEvent("ses aygıtları değişti → " + d)), 500);
+        });
+      }
+      if (keep.el && !route.keepHooked) {
+        route.keepHooked = true;
+        keep.el.addEventListener("pause", () => { if (keep.on && route.on) { route.keepPaused = true; routeLog("sistem sayfanın arka plan sesini duraklattı (başka bir uygulama, arama ya da kulaklık)"); } });
+        keep.el.addEventListener("playing", () => { if (route.keepPaused) { route.keepPaused = false; routeEvent("arka plan sesi yeniden çalıyor"); } });
+      }
+      clearInterval(route.timer); route.timer = setInterval(routeTick, 250);
+    } catch {}
+  }
+  function routeStop() { route.on = false; clearInterval(route.timer); route.timer = 0; clearTimeout(route.devTimer); try { els.noSound.disabled = true; } catch {} }
+  els.noSound.onclick = async () => {
+    try {
+      if (!session.running) return;
+      const at = elapsed(), nowText = routeNow(), dev = await routeDevices();
+      const lines = ["“SES GELMİYOR” işaretlendi (" + at + ").", "ŞİMDİ: " + nowText + " · " + dev, "BAŞLANGIÇTA: " + (route.base || "henüz kaydedilmedi"), "OLAYLAR: " + (route.ev.length ? route.ev.join(" | ") : "yok"), "AYGIT: " + (route.ua || "bilinmiyor")];
+      lines.forEach(l => sysLog("Ses yolu · " + l));
+      els.routeText.textContent = lines.join("\n");
+      els.routeBox.hidden = false;
+      try { await navigator.clipboard.writeText("TUS Dinleyici ses yolu kaydı\n" + lines.join("\n")); els.routeCopy.textContent = "Kopyalandı"; } catch { els.routeCopy.textContent = "Kopyala"; }
+    } catch {}
+  };
+  els.routeCopy.onclick = async () => {
+    try { await navigator.clipboard.writeText("TUS Dinleyici ses yolu kaydı\n" + els.routeText.textContent); els.routeCopy.textContent = "Kopyalandı"; }
+    catch { els.routeCopy.textContent = "Kopyalanamadı"; }
+  };
 
   // ---------- Düğmeler ----------
   // fresh = "Yeni ders": notlar, döküm ve süre silinip baştan başlanır.
@@ -2069,12 +2257,14 @@ Kurallar:
     mediaSessionState();
     requestWakeLock();
     diagUpdate();
+    routeStart();
   }
   function stop(fromError) {
     const was = session.running;
     session.running = false; session.ready = false; session.reconnecting = false; session.buffer = [];
     if (session.ws) { try { session.ws.onclose = null; session.ws.close(1000); } catch {} }
     session.ws = null;
+    routeStop();
     abortTurn(false); stopMic(); resetGate(); keepAliveStop();
     bg.hiddenAt = 0; bg.ended = false;
     if (was && !fromError) sysLog("Durduruldu (" + elapsed() + ").");
@@ -2122,7 +2312,7 @@ Kurallar:
   renderMode();
 
   // Test kancası (yalnızca ?ws= ile açıldığında)
-  if (WS_OVERRIDE) window.__tus = { session, notes, log, cfg, audio, gate, barge, lecture, quiz, qlog, keep, bg, mode: () => mode };
+  if (WS_OVERRIDE) window.__tus = { session, notes, log, cfg, audio, gate, barge, lecture, quiz, qlog, keep, bg, route, mode: () => mode };
 })();
 </script>
 </body>
