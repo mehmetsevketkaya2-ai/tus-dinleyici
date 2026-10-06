@@ -43,16 +43,25 @@ denemede bir kez kopyalar. Asıl sayfanın kayıtlarına hiçbir zaman yazmaz.
   sayfasında kullanıldı ve işi bitti; `index.html` dosyasına geçmedi. Gerekirse `0833bcd` sürümündeki
   `deneme.html` dosyasından geri alınır.
 - 6 Ekim 2026: **4-toplu** (kullanıcının isteğiyle dört değişiklik birlikte; aşağıda) deneme sayfasında denendi,
-  kullanıcı "4 Deneme tamam yayına geçebilir" dedi ve dördü birden `index.html` dosyasına geçti. `index.html`
-  artık 4 Ekim sürümü + notlar + bu dört değişikliktir ("Sürüm: 6 Ekim 2026 (2)"). Geri dönmek gerekirse:
-  yalnız notları içeren önceki ana sayfa `c1567ed` sürümündeki `index.html` dosyasıdır.
-- 6 Ekim 2026: `deneme.html` üzerinde **5-emir-uslup** deneniyor: üç değişiklik birlikte (aşağıda): emirler,
-  sıcak üslup ve bağlantı. Kullanıcının "tamam" demesi bekleniyor; denince üçü birden `index.html` dosyasına
-  geçer. Biri sorun çıkarırsa yalnızca o çıkarılıp deneme sayfası yeniden kurulur (üçü birbirinden bağımsız
-  yazıldı). Emirlerle üslubu birlikte koymayı kullanıcı ayrıca istemedi; "tek tek zaman alır denemesi" sözüne
-  dayanılarak konuldu ve kendisine bildirildi. Bağlantı düzeltmesi sorulunca "Ekle" dedi. Üçüncü değişiklik
-  eklenirken deneme kimliği bilerek aynı bırakıldı: kimlik değişseydi deneme sayfasındaki notların yerine asıl
-  sayfanınkiler kopyalanırdı.
+  kullanıcı "4 Deneme tamam yayına geçebilir" dedi ve dördü birden `index.html` dosyasına geçti ("Sürüm: 6 Ekim
+  2026 (2)", `9537ed8`).
+- 6 Ekim 2026: **5-emir-uslup** (üç değişiklik birlikte; aşağıda: emirler, sıcak üslup, bağlantı) deneme
+  sayfasında denendi, kullanıcı "Düzeldi şimdilik, son denemeyi yayına alalim" dedi ve üçü birden `index.html`
+  dosyasına geçti. `index.html` artık 4 Ekim sürümü + notlar + 4-toplu + bu üç değişikliktir ("Sürüm: 6 Ekim
+  2026 (3)"). Geri dönmek gerekirse önceki ana sayfalar: `9537ed8` (4-toplu), `c1567ed` (yalnız notlar).
+  Emirlerle üslubu birlikte koymayı kullanıcı ayrıca istememişti; "tek tek zaman alır denemesi" sözüne
+  dayanılarak konuldu ve kendisine bildirildi. Bağlantı düzeltmesi sorulunca "Ekle" dedi.
+- `deneme.html` şu an bu son denemeyi gösteriyor (5-emir-uslup, "6 Ekim 2026 (2)" üstüne kurulu); ana sayfayla
+  aynı işi yapar. Yeni bir deneme konunca değişir. Aynı denemeye bir değişiklik eklenirken deneme kimliği aynı
+  bırakılır: kimlik değişirse deneme sayfasındaki notların yerine asıl sayfanınkiler kopyalanır.
+
+## Sırada bekleyen, kullanıcının istemediği öneriler
+
+- Google hata vermeyi sürdürürse başka bir Gemini canlı modeline kendiliğinden geçiş (aynı anahtarla). Önerildi;
+  kullanıcı henüz istemedi, yapılmadı.
+- Kullanıcı başka bir API sordu (6 Ekim; NVIDIA, "başka ücretsiz API"). Verilen cevap: canlı sesli konuşma +
+  Türkçe + tarayıcıdan doğrudan bağlantı + sürekli ücretsiz kullanım bir arada yalnızca Google'da bulundu.
+  NVIDIA'nın canlı ses modelinde (Nemotron VoiceChat) Türkçe görünmüyor; OpenAI Realtime ücretli. Bir şey yapılmadı.
 
 ## Çözülen sorun: ses kulaklıkta kesiliyordu (sayfadan değildi)
 
@@ -94,9 +103,11 @@ da "Tamam" diyebilir (5 Ekim'de bir kez oldu); yeniden sorma gereksiz yerde devr
 kendi kendine sorulan sorularda). Kullanıcı dördünü tablette deneyip onayladı; bunlarla ilgili bir şikâyet
 bildirmedi. Bildirirse önce dökümdeki "… soru yeniden soruldu" satırlarına bakılır.
 
-## Deneme sayfasındaki üç değişiklik (5-emir-uslup)
+## Ana sayfadaki üç değişiklik (5-emir-uslup, 6 Ekim)
 
-Üçü birbirinden bağımsızdır; biri çıkarılırsa öbürleri kalır.
+Üçü birbirinden bağımsız yazıldı. Ayrı hâlleri depoda yoktur; git geçmişindeki deneme sayfalarında yalnızca
+birlikte dururlar (`328b400` sürümündeki `deneme.html`: emirler + üslup; `1cf4868` sürümündeki: üçü). Biri
+çıkarılacaksa ilgili kod elle ayıklanır ve sonuç yine önce deneme sayfasına konur.
 
 ### 1. Emirler
 
@@ -148,9 +159,10 @@ bildiriliyor; kullanıcının modeli için de var (gemini-3.8-live, 3 Ekim 2026:
 https://github.com/google-gemini/gemini-live-api-examples/issues/60). Bildirimlere göre bu hatadan sonra eski
 oturumun geri yüklenmesi reddedilebiliyor ya da geri yüklenen oturum yeniden kapanıyor; yeni oturum açılabiliyor.
 
-Bilinmeyenler: hata başlatırken mi çıktı, oturum sürerken mi (kullanıcı yazmadı); deneme sayfasının daha uzun
-talimatının payı var mı (bir bildirim uzun talimatta sıklaştığını söylüyor). Deneme sayfasında sık, ana sayfada hiç
-olmuyorsa pay var demektir; o zaman talimat kısaltılır.
+Bilinmeyenler: hata başlatırken mi çıktı, oturum sürerken mi (kullanıcı yazmadı); emirler ve üslup notlarıyla
+uzayan talimatın payı var mı (bir bildirim uzun talimatta sıklaştığını söylüyor; talimat yaklaşık 3,6 bin
+karakterden 6,3 bine çıktı). Bu değişiklikler ana sayfaya geçtikten sonra hata belirgin biçimde sıklaşırsa pay var
+demektir; o zaman notlar kısaltılır.
 
 Sayfadaki eksik (4 Ekim sürümünde de vardı): oturum sürerken böyle kapanınca sayfa 16 sn içinde 6 kez, hep eski
 oturumu geri yükleyerek deniyor, olmazsa duruyordu; başlatırken hiç yeniden denemiyordu.
@@ -176,3 +188,6 @@ konuşmaya başladı mı (ders sırasında gereksiz tepki, uzayan cevaplar). Şi
 Bağlantı: Google gerçekten hata verdiğinde sayfa kendiliğinden toparlıyor mu. Toparladıysa dökümde "Google bağlantıyı
 kapattı (…). Bağlantı yenilendi." satırı olur; yine "Durdu" ekranı gelirse hata 48 sn'den uzun sürmüştür ya da
 neden başkadır, o ekranın ve dökümün son satırlarının görüntüsü istenir.
+
+Kullanıcı üçünü tablette deneyip onayladı ("Düzeldi şimdilik"). Emirlerin ve üslubun nasıl çalıştığını ayrıca
+anlatmadı; Google'ın hatası bu süre içinde yeniden olup sayfanın toparlayıp toparlamadığı da bilinmiyor.

@@ -332,7 +332,7 @@ a { color: var(--hema); }
         <div class="field" style="margin-top:10px">
           <textarea id="prompt" spellcheck="false" aria-label="Talimat"></textarea>
           <div class="row"><button class="small" id="resetPrompt" type="button">Varsayılana dön</button><span class="hint" id="promptStatus"></span></div>
-          <span class="hint">Bu talimata her zaman üç kısa not eklenir: dinleyici benzer sesli bir terimi (kromofob / kromofil gibi) yanlış duymuş olabileceğinde “yanlış” demez, ne duyduğunu sorar; sorduğunuz her soruya da, “Paratiroid peki?” gibi kısa olanlara da cevap verir; “Nerede kalmıştık?” derseniz kaldığınız yeri tek cümleyle hatırlatır.</span>
+          <span class="hint">Bu talimata her zaman beş kısa not eklenir: dinleyici benzer sesli bir terimi (kromofob / kromofil gibi) yanlış duymuş olabileceğinde “yanlış” demez, ne duyduğunu sorar; sorduğunuz her soruya da, “Paratiroid peki?” gibi kısa olanlara da cevap verir; “tekrar et”, “son söylediğine devam et”, “açıkla” gibi emirlerinizi yerine getirir; “Nerede kalmıştık?” derseniz kaldığınız yeri tek cümleyle hatırlatır; sizinle bir meslektaşınız gibi, “sen” diyerek konuşur.</span>
         </div>
       </details>
 
@@ -340,7 +340,7 @@ a { color: var(--hema); }
         <span><b>Kulaklık kullanın.</b> Hoparlörden çıkan ses mikrofona geri dönerse dinleyici kendi sesini sizin sözünüz sanabilir.</span>
         <span>Mikrofon izni sorulursa <b>İzin ver</b>'e basın. Sayfayı Chrome ya da Edge ile açın.</span>
       </div>
-      <div class="hint" style="margin-top:14px">Sürüm: 6 Ekim 2026 (2). Karşılaştırmak için eski sürümler: <a href="https://mehmetsevketkaya2-ai.github.io/tus-dinleyici/2ekim.html">2 Ekim</a> · <a href="https://mehmetsevketkaya2-ai.github.io/tus-dinleyici/1ekim.html">1 Ekim</a></div>
+      <div class="hint" style="margin-top:14px">Sürüm: 6 Ekim 2026 (3). Karşılaştırmak için eski sürümler: <a href="https://mehmetsevketkaya2-ai.github.io/tus-dinleyici/2ekim.html">2 Ekim</a> · <a href="https://mehmetsevketkaya2-ai.github.io/tus-dinleyici/1ekim.html">1 Ekim</a></div>
       <div class="hint" id="diag"></div>
     </details>
   </section>
@@ -363,24 +363,29 @@ a { color: var(--hema); }
 
 Aday tıp fakültesini bitirmiş bir hekim ve TUS'a hazırlanıyor. Konuşmalar tamamen eğitim amaçlı; kimse senden kişisel bir tanı ya da tedavi istemiyor. Bu yüzden "tanı veya tedavi yerine geçmez", "bir sağlık uzmanına danışın", "doktorunuza başvurun" gibi uyarılar ve sorumluluk notları asla ekleme. Ders kitabı bilgisini doğrudan söyle.
 
-Gerçekten konuşman gereken yalnızca üç durum var:
+Gerçekten konuşman gereken yalnızca şu durumlar var:
 1. Aday tıbben yanlış bir bilgi söylediğinde (yanlış hormon, yanlış hücre, ters etki, yanlış sayı gibi).
 2. TUS'ta sık sorulan kritik bir noktayı atlayıp başka konuya geçtiğinde.
 3. Aday sana bir soru sorduğunda ("…değil mi?", "…doğru mu?", "neden…", "nasıl…", "hangisi…" gibi). Sorulara her zaman kısa ve net cevap ver; bir soruya asla "Tamam" diye karşılık verme.
 4. Sen bir soruyu cevapladıktan ya da bir uyarı yaptıktan hemen sonra aday bu konuda yorum yaparsa, bir çıkarımda bulunursa ya da söylediğini kendi cümleleriyle tekrarlarsa ("Aha, o zaman şöyle olur" gibi). Bu bir sohbettir: kısa bir tepki ver. Doğruysa bir cümleyle onayla, istersen küçük bir ek bilgiyle; yanlışsa düzelt. Aday yeniden konu anlatmaya döndüğünde tekrar sessiz dinlemeye geç.
-Bu durumlarda en fazla iki kısa cümleyle söyle. Sözünü "devam et" gibi bir ifadeyle bitirme. Doğru anlatılanı tekrar etme, özet yapma, övme, soru sorma.
+5. Aday sana doğrudan bir emir ya da istek söylediğinde ("son söylediğine devam et", "tekrar et", "açıkla", "özetle", "örnek ver" gibi). İsteneni hemen yap; bir emre asla "Tamam" deyip geçme.
+Bu durumlarda en fazla iki kısa cümleyle söyle; aday özet ya da açıklama gibi uzun bir şey istediyse en fazla beş kısa cümleyle. Sözünü "devam et" gibi bir ifadeyle bitirme. Aday istemedikçe doğru anlatılanı tekrar etme, özet yapma, soru sorma; adayı övme.
 
-Bu dört durumun dışında her seferinde yalnızca tek bir kelime söyle: "Tamam". Başka hiçbir kelime, açıklama, sembol ya da not ekleme. "Sessizlik", "silence", "<!-- -->", parantez içi açıklamalar gibi şeyler kesinlikle üretme. Bu tek kelime adaya hiç duyurulmuyor; sadece söyleyecek bir şeyin olmadığını gösteriyor.
+Bu beş durumun dışında her seferinde yalnızca tek bir kelime söyle: "Tamam". Başka hiçbir kelime, açıklama, sembol ya da not ekleme. "Sessizlik", "silence", "<!-- -->", parantez içi açıklamalar gibi şeyler kesinlikle üretme. Bu tek kelime adaya hiç duyurulmuyor; sadece söyleyecek bir şeyin olmadığını gösteriyor.
 
 Aday "bitti" dediğinde ya da senden eksikleri istediğinde, anlatımda atlanan en önemli noktaları en fazla beş kısa madde olarak söyle.
 
 Her zaman Türkçe konuş. Tıbbi terimleri olduğu gibi kullanabilirsin.`;
   // Benzer sesli terimler (kromofob/kromofil gibi) yanlış duyulabiliyor; o zaman dinleyici adayı haksız yere düzeltiyordu.
   // Bu not hem hazır talimata hem kullanıcının düzenlediği talimata eklenir: emin olmadığı terimde "yanlış" demez, ne duyduğunu sorar.
-  const HEARING_NOTE = `Sesi her zaman kusursuz duyamazsın; benzer sesli tıp terimlerini birbirine karıştırabilirsin: kromofob/kromofil, hipo-/hiper-, aferent/eferent, abdüksiyon/addüksiyon, -oz/-it gibi. Bir uyarın yalnızca böyle bir terime dayanıyorsa adayın yanlış söylediğini varsayma ve "yanlış" deme: önce ne duyduğunu sor, ardından doğrusunu tek cümleyle söyle. Örnek: "Kromofil mi dediniz? Sayıca en çok olan kromofoblardır." Soru sormama kuralının tek istisnası budur. Aday "kromofob dedim" gibi netleştirirse yalnızca "Tamam" de; oturumun devamında o terimi öyle anla ve aynı terim için bir daha sorma.`;
+  const HEARING_NOTE = `Sesi her zaman kusursuz duyamazsın; benzer sesli tıp terimlerini birbirine karıştırabilirsin: kromofob/kromofil, hipo-/hiper-, aferent/eferent, abdüksiyon/addüksiyon, -oz/-it gibi. Bir uyarın yalnızca böyle bir terime dayanıyorsa adayın yanlış söylediğini varsayma ve "yanlış" deme: önce ne duyduğunu sor, ardından doğrusunu tek cümleyle söyle. Örnek: "Kromofil mi dedin? Sayıca en çok olan kromofoblardır." Soru sormama kuralının tek istisnası budur. Aday "kromofob dedim" gibi netleştirirse yalnızca "Tamam" de; oturumun devamında o terimi öyle anla ve aynı terim için bir daha sorma.`;
   // Her soru duyulur bir cevap almalı: kısa ve eksiltili sorular da ("Paratiroid peki?", "Şu peki?") sorudur, hiçbir soru
   // "Tamam" ile geçiştirilmez. Bu not da hem hazır talimata hem kullanıcının düzenlediği talimata eklenir.
   const QUESTION_NOTE = `Adayın sana sorduğu her soruya duyulur bir cevap ver; bir soruya asla "Tamam" deme. "Tamam" adaya duyurulmadığı için cevap sayılmaz. Kısa ve eksiltili sorular da sorudur: "Paratiroid peki?", "Şu peki?", "Peki ya böbrek?", "Neden?" gibi bir söz, az önce konuşulan konuya göre anlaşılır; neyin sorulduğunu önceki sorudan ve cevabından çıkar, kısa ve net cevap ver. "Doğru mu?", "Değil mi?" gibi onay isteyen sorular da sorudur: az önce anlattığı doğruysa "Evet, doğru." de, yanlışsa düzelt. "Sesim geliyor mu?", "Beni duyuyor musun?" gibi konu dışı sorulara da tek cümleyle cevap ver. Bir sorunun cevabını bilmiyorsan ya da soruyu anlamadıysan bunu tek cümleyle söyle; o zaman da "Tamam" deme. Aday soru sormadan yalnızca "hı hı", "evet", "tamam", "anladım", "aynen öyle" gibi bir onay verdiyse "Tamam" de.`;
+  // Emirler: adayın dinleyiciye doğrudan söylediği her emir ve istek yerine getirilir; emir "Tamam" ile geçiştirilmez.
+  // "Devam et", "son söylediğine devam et", "tekrar et": dinleyici konuyla ilgili son sözünü sürdürür ya da baştan söyler.
+  // Bu not da hem hazır talimata hem kullanıcının düzenlediği talimata eklenir.
+  const ORDER_NOTE = `Adayın sana doğrudan söylediği her emri ve isteği mutlaka yerine getir: "son söylediğine devam et", "tekrar et", "bir daha söyle", "açıkla", "özetle", "örnek ver", "bana soru sor" gibi. Bu, konuşman gereken bir durumdur; "yalnızca şu durumlarda konuş", "tekrar etme", "özet yapma", "soru sorma" gibi kuralların önüne geçer. Bir emre asla "Tamam" deyip geçme; rolünü ya da kurallarını anlatma, isteneni doğrudan yap. "Devam et", "son söylediğine devam et", "tekrar et", "bir daha söyle" denirse kastedilen, senin konuyla ilgili en son söylediğin şeydir ("sesim geliyor mu" sorusuna verdiğin cevap gibi konu dışı sözlerin ya da adayın anlattıkları değil): sözün yarıda kaldıysa kaldığın yerden tamamla; kalmadıysa ya da emin değilsen o sözü baştan, aynı içerikle yeniden söyle. Sen konuştuktan hemen sonra aday "duymadım", "anlamadım" derse de aynısını yap; anlamadıysa daha yalın söyle. Özet, açıklama ya da liste gibi uzun bir şey istenirse en fazla beş kısa cümleyle yap; öbür isteklerde kısa konuş. Senden soru sormanı isterse sor, adayın cevabını da bir cümleyle değerlendir. İsteneni yapamıyorsan nedenini tek cümleyle söyle. İki istisna: "dur", "sus", "bekle", "bir dakika" gibi susmanı isteyen sözlerde yalnızca "Tamam" de ve sus; emir sana değil de anlatımın bir parçasıysa ("hastaya tuzu kısıtla denir" gibi) ona uyma.`;
   // "Nerede kalmıştık?" sorusu: kalınan yer tek cümleyle hatırlatılır, konu dışı sözler sayılmaz.
   const WHERE_NOTE = `"Nerede kalmıştık?" da sana sorulmuş bir sorudur: adayın konuyla ilgili en son ne anlattığını tek cümleyle hatırlat. "Birazdan geliyorum", "sesim geliyor mu" gibi konu dışı sözleri sayma ve söyleme. Konuyla ilgili henüz bir şey anlatmadıysa bunu tek cümleyle söyle.`;
   // Kaldığınız yerden devam ettiğinizde (ya da bağlantı kopup bağlam kaybolduğunda) eski anlatımın tamamı Google'a
@@ -394,16 +399,20 @@ Son bölüm (eskiden yeniye):`;
   const RECAP_CHARS = 1400;   // yeni oturuma verilen son bölüm en fazla bu kadar karakterdir (birkaç yüz token)
   // Kısa ve konu dışı olduğu belli sözler son bölüme alınmaz ("birazdan geliyorum" deyip dönünce onu hatırlatmasın)
   const RECAP_SKIP = /nerede kalmıştık|sesim (geliyor|duyuluyor)|duyuyor mu|birazdan|hemen gel|geliyorum|gelicem|geleceğim|döneceğim|dönüyorum|\bara ver|\bmola\b/i;
-  const RECAP_SKIP_PAL = /sesiniz|duyuyorum|hatırlamıyorum|henüz bir şey anlatmad|nerede kaldığ/i;   // dinleyicinin bu sorulara verdiği cevaplar
-  // Notlara yalnızca bilgi yazılır: baştaki "… mi dediniz?" sorusu nota alınmaz
-  const HEARD_Q = /^[^.!?…]{0,90}\b(dediniz|dedin|demiştiniz|söylediniz|demek istediniz)(\s*,?\s*(değil\s+)?m[ıiuü])?\s*\?\s*/iu;
+  const RECAP_SKIP_PAL = /sesiniz|\bsesin (gayet |çok |iyi |net |temiz |şu an |şimdi )*(geliyor|gelmiyor|duyuluyor)|duyuyorum|duyabiliyorum|hatırlamıyorum|henüz bir şey anlatmad|nerede kaldığ/i;   // dinleyicinin bu sorulara verdiği cevaplar
+  // Üslup: meslektaş gibi, "sen" diyerek, ciddi ama sıcak. Yalnızca nasıl konuştuğunu değiştirir; ne zaman konuşacağını
+  // değiştirmez, "Tamam" kuralı aynen sürer (sayfa dolgu sözleri ona göre ayıklıyor). Bu not da her talimata eklenir.
+  const TONE_NOTE = `Üslup: adayla aynı sınava hazırlanan, onunla yan yana çalışan bir meslektaşı, bir arkadaşı gibi konuş. Ona "sen" diye hitap et; "siz" deme. Ses tonun sıcak, rahat ve doğal olsun: spiker ya da kürsüden ders anlatan bir hoca gibi değil, birlikte çalışan iki hekimin birbiriyle konuştuğu gibi. Kitap cümleleri yerine gündelik, doğal bir Türkçe kullan; "Aynen öyle.", "Evet, doğru.", "Yok, tersi: …", "Küçük bir düzeltme: …", "Bir de şu var: …" gibi (bunları ezbere tekrarlama, yerine göre söyle). Ciddiyeti koru: bilgi kesin ve doğru olsun; şaka, laubalilik ve argo olmasın. Yanlışı düzeltirken net ol ama azarlar gibi olma; doğrusunu doğrudan söyle. Övgü, resmî kalıplar ("rica ederim", "memnuniyetle", "elbette efendim") ve "güzel bir soru" gibi girişler ekleme. Bu not yalnızca nasıl konuştuğunu değiştirir; ne zaman ve ne kadar konuşacağını değiştirmez: konuşman gereken durumların dışında yine yalnızca "Tamam" de, konuştuğunda da yine kısa konuş. Sıcak olmak fazladan cümle eklemek demek değildir.`;
+  // Notlara yalnızca bilgi yazılır: baştaki "… mi dedin?" / "… mi dediniz?" sorusu nota alınmaz
+  const HEARD_Q = /^[^.!?…]{0,90}\b(dediniz|dedin|demiştiniz|demiştin|söylediniz|söyledin|demek istediniz|demek istedin)(\s*,?\s*(değil\s+)?m[ıiuü])?\s*\?\s*/iu;
   const CHECK_TEXT = "Şu ana kadar anlattıklarımda kritik bir yanlış ya da TUS için önemli bir eksik var mı? Varsa en fazla iki kısa cümleyle söyle, yoksa sadece \"eksik yok\" de.";
   const DONE_TEXT = "Anlatımım bitti. Atladığım en önemli noktaları en fazla beş kısa madde olarak söyle.";
   // Her zaman susturulan işaret ve dolgu sözleri ("Tamam" talimattaki "söyleyecek bir şeyim yok" işaretidir)
   const MARKER_WORDS = new Set(["tamam", "tamamdır", "hı", "hıhı", "hı-hı", "hıı", "hi", "hihi", "hı-ı", "mhm", "hmm", "hm", "devam", "et", "edebilirsin", "edebilirsiniz", "ediyorum", "dinliyorum", "okey", "ok", "okay",
     "sessizlik", "sessiz", "kalıyorum", "susuyorum", "bekliyorum", "dinlemedeyim", "dinlemeye", "silence", "silent", "pause", "listening", "quiet", "none", "nothing", "no", "response"]);
   // Soru sorulmadıysa susturulan onay sözleri; soru sorulduysa bunlar cevaptır ve çalınır
-  const AFFIRM_WORDS = new Set(["evet", "anladım", "peki", "güzel", "olur", "iyi", "doğru", "aynen", "harika", "süper", "çok", "gayet", "gidiyorsun", "gidiyorsunuz", "bravo", "tebrikler", "sorun", "yok", "eksik", "edin", "öyle", "kesinlikle", "tabii", "tabi", "elbette", "mükemmel", "işte"]);
+  const AFFIRM_WORDS = new Set(["evet", "anladım", "peki", "güzel", "olur", "iyi", "doğru", "aynen", "harika", "süper", "çok", "gayet", "gidiyorsun", "gidiyorsunuz", "bravo", "tebrikler", "sorun", "yok", "eksik", "edin", "öyle", "kesinlikle", "tabii", "tabi", "elbette", "mükemmel", "işte",
+    "haklısın", "söylüyorsun", "anlatıyorsun", "diyorsun", "tam", "olarak", "süpersin", "harikasın"]);
   // Söyleyecek bir şey yoksa modelin ürettiği işaretleri ve dolgu sözleri tanır; bunlar hiç çalınmaz.
   // Yarım gelmiş parçaları da (ör. "<!-- Sil") tanır, çünkü karar parça parça gelen döküme göre veriliyor.
   function stripMarks(text) {
@@ -445,6 +454,35 @@ Son bölüm (eskiden yeniye):`;
     const m = PEKI_END.exec(t);
     return !!m && !MARKER_WORDS.has(m[1]) && !AFFIRM_WORDS.has(m[1]);
   }
+
+  // Sözünüz dinleyiciye verilmiş bir emirle mi bitti? Yerine getirilmezse (dinleyici "Tamam" deyip geçerse) yeniden iletilecek
+  // kadar belli mi? Yalnızca son cümleye bakılır ve cümle kısa olmalıdır: emirler kısadır, uzun bir anlatım cümlesi emir sayılmaz.
+  // - "yinele": dinleyicinin son sözünü sürdürmesi ya da yeniden söylemesi istenir ("devam et", "son söylediğine devam etsene",
+  //   "tekrar et", "bir daha söyle", "tekrar eder misin", tek başına "tekrar"; dinleyici az önce konuşmuşken "duymadım", "anlamadım").
+  // - "yap": içerik isteyen başka bir emir ("açıkla", "özetle", "örnek ver", "bana soru sor").
+  // - "sor": cevabı kısa bir onay da olabilecek emir ("kontrol et", "değerlendir"): "Evet, doğru." burada cevaptır.
+  // "Dur", "sus", "bekle" gibi susturan sözler burada emir sayılmaz: onlara "Tamam" deyip susmak zaten istenendir.
+  // "Devam etme", "söyleme" gibi olumsuzlar, "açıklama" gibi adlar ve "devam eder", "tekrarlar" gibi anlatım cümleleri tutmaz:
+  // emir kipi sözcüğün sonunda bitmelidir. Sonda "lütfen", "hadi", "… dedim ama" gibi ekler olabilir.
+  const ORDER_TAIL = "(?:\\s+(?:lütfen|bakalım|bakayım|hadi|artık|şimdi|ya|bana))*(?:\\s+(?:dedim|diyorum)(?:\\s+(?:ama|ya|sana))?)?$";
+  const AGAIN_WORDS = "(?:bir daha|bi daha|bir kez daha|bir kere daha|tekrar|yeniden|baştan|yine)";
+  const REPEAT_END = new RegExp("(?:^|[\\s,])(?:devam et(?:sene|iver)?|tekrar et(?:sene)?|tekrarla(?:sana)?|yinele(?:sene)?|" + AGAIN_WORDS + "\\s+(?:söyle(?:sene)?|anlat(?:sana)?|oku(?:sana)?|say(?:sana)?))" + ORDER_TAIL);
+  const REPEAT_Q_END = new RegExp("(?:^|[\\s,])(?:devam eder|tekrar eder|tekrarlar|yineler|" + AGAIN_WORDS + "\\s+(?:söyler|anlatır|okur|sayar))\\s+m[iı]s[iı]n(?:\\s+(?:lütfen|ya))*$");
+  const REPEAT_ONLY = /^(?:(?:hadi|lütfen|şunu|onu|bunu)\s+)*(?:tekrar|bir daha|bi daha|bir kez daha|bir kere daha|yeniden|baştan)(?:\s+lütfen)?$/;
+  const MISSED_END = /(?:^|[\s,])(?:duymadım|duyamadım|anlamadım|anlayamadım|kaçırdım)(?:\s+(?:ama|ki|ya))?$/;
+  const DO_END = new RegExp("(?:^|[\\s,])(?:açıkla(?:sana)?|özetle(?:sene)?|anlat(?:sana)?|söyle(?:sene)?|say(?:sana)?|sırala(?:sana)?|tanımla(?:sana)?|karşılaştır(?:sana)?|detaylandır|ayrıntılandır|hatırlat(?:sana)?|(?:örnek|ipucu|detay|ayrıntı|bilgi|cevap) ver(?:sene)?|soru sor(?:sana)?|cevapla(?:sana)?)" + ORDER_TAIL);
+  const CHECK_END = new RegExp("(?:^|[\\s,])(?:kontrol et(?:sene)?|değerlendir(?:sene)?|düzelt(?:sene)?|onayla(?:sana)?)" + ORDER_TAIL);
+  const ORDER_MAX_CHARS = 80;
+  function isOrder(text) {
+    const parts = (text || "").toLocaleLowerCase("tr").split(/[.!?…]+/).map(x => x.replace(/["'“”‘’«»]/g, "").replace(/\s+/g, " ").trim()).filter(Boolean);
+    const last = parts.length ? parts[parts.length - 1] : "";
+    if (!last || last.length > ORDER_MAX_CHARS) return "";
+    if (REPEAT_END.test(last) || REPEAT_Q_END.test(last) || REPEAT_ONLY.test(last) || (session.dialogOpen && MISSED_END.test(last))) return "yinele";
+    return DO_END.test(last) ? "yap" : CHECK_END.test(last) ? "sor" : "";
+  }
+  // İki söz aynı mı? (büyük-küçük harf ve noktalama sayılmaz)
+  function plainText(x) { return (x || "").toLocaleLowerCase("tr").replace(/[^\p{L}\p{N}]+/gu, " ").trim(); }
+  function sameText(a, b) { return plainText(a) === plainText(b); }
 
   // ---------- Kısayollar ----------
   const $ = (id) => document.getElementById(id);
@@ -547,7 +585,7 @@ Son bölüm (eskiden yeniye):`;
 
   function instruction() {
     if (isQuiz()) return quizInstruction();
-    let text = (cfg.customPrompt || DEFAULT_PROMPT) + "\n\n" + HEARING_NOTE + "\n\n" + QUESTION_NOTE + "\n\n" + WHERE_NOTE;
+    let text = (cfg.customPrompt || DEFAULT_PROMPT) + "\n\n" + HEARING_NOTE + "\n\n" + QUESTION_NOTE + "\n\n" + ORDER_NOTE + "\n\n" + WHERE_NOTE + "\n\n" + TONE_NOTE;
     const topic = els.topic.value.trim();
     if (topic) text += "\n\nBugünkü konu: " + topic + ".";
     if (session.resumed) { const lines = recapLines(); text += "\n\n" + (lines.length ? RECAP_NOTE + "\n" + lines.join("\n") : RESUME_NOTE); }
@@ -1092,7 +1130,11 @@ Son bölüm (eskiden yeniye):`;
     // Soru sordunuz, sustunuz, o andan beri duyulur bir cevap gelmedi (dinleyici hiçbir şey demedi; ya da "Tamam" dedi ama
     // sorunuzun dökümü ondan sonra geldiği için o sırada soru olduğu anlaşılamadı): soru bir kez yazıyla sorulur.
     if (session.userTail && !isQuiz() && !turn && !palSpeaking() && session.ready && session.spokeAt > session.playedAt
-        && Date.now() - session.spokeAt > stallMs() && isAsk(session.userTail)) askAgain(session.userTail, "Duyulur bir cevap gelmedi; soru yeniden soruldu.");
+        && Date.now() - session.spokeAt > stallMs()) {
+      const kind = isOrder(session.userTail);
+      if (kind) orderAgain(session.userTail, kind, "Duyulur bir cevap gelmedi; istek yeniden iletildi.");
+      else if (isAsk(session.userTail)) askAgain(session.userTail, "Duyulur bir cevap gelmedi; soru yeniden soruldu.");
+    }
     gate.ring.push(b64);
     if (gate.ring.length > PRE_ROLL_CHUNKS) gate.ring.shift();
     gate.hot = speech ? gate.hot + 1 : 0;
@@ -1169,6 +1211,11 @@ Son bölüm (eskiden yeniye):`;
     if (code === 1007 || code === 1008) return "config"; // geçersiz alan ya da değer
     return "network"; // 1006, 1011 ve diğerleri: geçici sorun
   }
+  // Google bağlantıyı kendi tarafındaki bir hatayla mı kapattı? ("Internal error encountered.") Kod tek başına yetmez: Google
+  // anahtar, kota ve ayar hatalarını da 1011 ile bildirebiliyor; onları classify ayırır, burada yalnızca yanıt metnine bakılır.
+  // Bu hata canlı modellerde ara ara oluyor; ardından eski oturumun geri yüklenmesi çoğu zaman reddediliyor ya da geri yüklenen
+  // oturum yeniden kapanıyor, yeni oturum ise açılabiliyor.
+  function serverFault(e) { return !!e && classify(e.code, e.reason) === "network" && /internal (server )?error/i.test(e.reason || ""); }
   function explain(kind, reason) {
     const raw = reason ? "<br><span class=\"hint\">Google'ın yanıtı: " + escapeHtml(reason) + "</span>" : "";
     switch (kind) {
@@ -1299,6 +1346,7 @@ Son bölüm (eskiden yeniye):`;
     if (sc.outputTranscription && sc.outputTranscription.text) palText(sc.outputTranscription.text);
     if (sc.turnComplete) {
       session.serverTurnOpen = false;
+      session.faults = 0;   // dinleyici bir cevabı bitirdi: oturum sağlıklı (bkz. onClose)
       // Söze girmiştiniz, dinleyici duraklamış Google'ın kararını bekliyordu; Google sözünü bitirdi, artık "kesildi" demez
       if (barge.wait && audio.paused) abortTurn(true);
       turnDone();
@@ -1348,8 +1396,12 @@ Son bölüm (eskiden yeniye):`;
     if (!t.question && (looksLikeQuestion(session.userTail) || inDialog())) t.question = true;
     const lower = txt.toLocaleLowerCase("tr");
     const maybeDisclaimer = DISCLAIMER_START.test(lower) && lower.length < 200;
-    if (t.asked || (txt && !maybeDisclaimer && !isTrivial(txt, t.question)) || (!txt && t.sec > gate)) decide(t, true);
+    if (t.asked || (txt && !maybeDisclaimer && !fillerReply(t, txt)) || (!txt && t.sec > gate)) decide(t, true);
   }
+  // Cevap yalnızca dolgu mu? Soruya ya da sohbetteki yoruma verilen kısa onay ("Evet, doğru.") cevaptır ve çalınır.
+  // Emre verilen onay ise ("Tamam", "Tabii", "Olur") emri yerine getirmek değildir: çalınmaz, istek yazıyla yeniden iletilir.
+  // "Kontrol et" gibi emirlerde onay bir cevaptır ("Evet, doğru."); orada yalnızca "Tamam" gibi dolgular cevap sayılmaz.
+  function fillerReply(t, txt) { const kind = isOrder(session.userTail); return isTrivial(txt, kind === "sor" ? true : t.question && !kind); }
   function decide(t, play) {
     if (t.decided) return;
     t.decided = true; t.play = play;
@@ -1377,7 +1429,7 @@ Son bölüm (eskiden yeniye):`;
         const txt = t.text.trim();
         if (!t.question && (looksLikeQuestion(session.userTail) || inDialog())) t.question = true;
         // Yazısı hiç gelmeyen uzun bir cevap gerçek bir uyarı olabilir; kısa ve yazısızsa dolgudur.
-        decide(t, txt ? !isTrivial(txt, t.question) : t.sec > (session.level >= 4 ? GATE_SEC : 2.5));
+        decide(t, txt ? !fillerReply(t, txt) : t.sec > (session.level >= 4 ? GATE_SEC : 2.5));
       }
       finalizeTurn(t, false);
     }, 700);
@@ -1406,7 +1458,14 @@ Son bölüm (eskiden yeniye):`;
         const said = stripMarks(stripDisclaimer(text)).replace(/\s+/g, " ").replace(/[\s,.;:!]*\b(devam et(ebilirsin)?|devam edebilirsin|devam)\s*[.!…]*\s*$/i, "").trim();
         const clean = said.replace(HEARD_Q, "").trim();
         // Yalnızca "… mi dediniz?" diye sorduysa ortada not edilecek bir bilgi yoktur
-        if (clean || !HEARD_Q.test(said)) addNote((clean || text) + (interrupted ? " …" : (/[.!?…]$/.test(clean) ? "" : ".")));
+        if (clean || !HEARD_Q.test(said)) {
+          const note = (clean || text) + (interrupted ? " …" : (/[.!?…]$/.test(clean) ? "" : "."));
+          // İstek üzerine yinelenen söz notlara ikinci kez yazılmaz; önceki not yarıda kalmışsa ("… …") tamamı onun yerine geçer.
+          const p = plainText(note);
+          const old = notes.slice(-6).find(n => plainText(n.text) === p || (/ …$/.test(n.text) && plainText(n.text).length >= 20 && p.startsWith(plainText(n.text))));
+          if (!old) addNote(note);
+          else if (!interrupted && / …$/.test(old.text)) { old.text = note; renderNotes(); saveSoon(); }
+        }
       }
       if (!text) { t.entry.el.remove(); const i = log.indexOf(t.entry); if (i >= 0) log.splice(i, 1); saveSoon(); }
     }
@@ -1415,21 +1474,48 @@ Son bölüm (eskiden yeniye):`;
     // Bu arada yeni bir söze başladıysanız onun dökümü kalır (bkz. onServer)
     session.userTail = t.nextTail || "";
     if (!t.nextTail) curMe = null;
-    let again = "";
+    let again = "", order = "";
     // Dinleyici konuştuysa sohbet açılır; "söyleyecek bir şeyim yok" dediyse kapanır
     if (t.play) { session.dialogOpen = true; session.dialogChars = (t.nextTail || "").length; }
     else if (t.decided) {
       // Soru sordunuz ama dinleyici "Tamam" deyip geçti: soru bir kez de yazıyla sorulur, cevapsız kalmasın.
       // (Sözü kesildiyse, soruyu düğmeyle sorduysanız, yeni bir cevap ya da yeni bir söz başladıysa, şu an konuşuyorsanız gerekmez.)
       const talking = gate.sending && gate.quietMs < 1000;
-      if (!interrupted && !superseded && !t.asked && !t.nextTail && !talking && session.ready && !session.paused && isAsk(words)) again = words;
+      // Emir verdiniz ama dinleyici "Tamam" ya da "Tabii" deyip geçti: istek de aynı koşullarda bir kez yazıyla iletilir.
+      const can = !interrupted && !superseded && !t.asked && !t.nextTail && !talking && session.ready && !session.paused;
+      if (can && (order = isOrder(words))) again = words;
+      else if (can && isAsk(words)) again = words;
       else session.dialogOpen = false;
     }
     if (!palSpeaking()) { session.thinkingSince = 0; listeningState(); }
     if (again) {
       const filler = stripMarks(t.text).replace(/\s+/g, " ").trim().slice(0, 40);
-      askAgain(again, filler ? "Dinleyici soruya yalnızca “" + filler + "” dedi (bu duyurulmaz); soru yeniden soruldu." : "Dinleyicinin cevabı duyulmadı; soru yeniden soruldu.");
+      if (order) orderAgain(again, order, filler ? "Dinleyici isteğe yalnızca “" + filler + "” dedi (bu duyurulmaz); istek yeniden iletildi." : "Dinleyicinin cevabı duyulmadı; istek yeniden iletildi.");
+      else askAgain(again, filler ? "Dinleyici soruya yalnızca “" + filler + "” dedi (bu duyurulmaz); soru yeniden soruldu." : "Dinleyicinin cevabı duyulmadı; soru yeniden soruldu.");
     }
+  }
+  // Dinleyicinin konuyla ilgili en son duyulan sözü ("sesiniz geliyor" gibi konu dışı cevaplar ve boş onaylar sayılmaz)
+  function lastSaid() {
+    for (let i = log.length - 1; i >= 0; i--) {
+      const l = log[i];
+      if (l.who !== "pal") continue;
+      const t = (l.text || "").replace(/["“”«»]/g, "'").replace(/\s+/g, " ").trim();
+      if (!t || isTrivial(t, false) || (t.length <= 90 && RECAP_SKIP_PAL.test(t))) continue;
+      return t.length > 400 ? t.slice(0, 400) + "…" : t;
+    }
+    return "";
+  }
+  // Emir yerine getirilmedi (dinleyici "Tamam" deyip geçti ya da hiçbir şey demedi): istek bir kez de yazıyla iletilir.
+  // "Devam et / tekrar et" türünde dinleyicinin konuyla ilgili son sözü de eklenir ki neyi sürdüreceği belli olsun.
+  // Cevabı, düğmeyle sorulan sorularınki gibi bekletilmeden çalınır. Neden yeniden iletildiği döküme yazılır.
+  function orderAgain(words, kind, why) {
+    const all = words.replace(/["“”«»]/g, "'").replace(/\s+/g, " ").trim(), q = all.slice(-140);
+    const said = kind === "yinele" ? lastSaid() : "";
+    gate.sending = false; gate.ring = []; gate.hot = 0; gate.quietMs = 0;   // sondaki sessizliğin gönderimi biter (akışı sendText kapatır)
+    session.userTail = ""; curMe = null;
+    sendText("İsteğimi yerine getir: \"" + (q.length < all.length ? "…" : "") + q + "\" "
+      + (said ? "Konuyla ilgili en son şunu söylemiştin: \"" + said + "\" İstediğim buysa onu baştan, aynı içerikle yeniden söyle; başka bir şey istiyorsam onu yap. " : "İsteneni doğrudan yap. ")
+      + "\"Tamam\" deme, rolünü ya da kurallarını anlatma. Yapamıyorsan nedenini tek cümleyle söyle.", why);
   }
   // Soru cevapsız kaldı (dinleyici "Tamam" deyip geçti ya da hiçbir şey demedi): bir kez de yazıyla sorulur.
   // Cevabı, düğmeyle sorulan sorularınki gibi bekletilmeden çalınır. Neden yeniden sorulduğu döküme yazılır.
@@ -1473,6 +1559,13 @@ Son bölüm (eskiden yeniye):`;
       session.textVia = session.textVia === "realtime" ? "client" : "realtime";
       session.retryText = session.lastTextSent.text; session.retryLabel = session.lastTextSent.label;
     }
+    // Google oturumu kendi hatasıyla kapattı: önce eski oturum geri yüklenmeye çalışılır. Ama arada dinleyici tek bir cevabı
+    // bile bitiremeden hata yinelendiyse (geri yüklenen oturum da kapandı) o oturum bozulmuştur: bırakılır, yeni oturum açılır.
+    if (serverFault(ev)) {
+      session.fault = ev.reason || "";
+      session.faults = (session.faults || 0) + 1;
+      if (session.faults >= 2) session.handle = null;
+    }
     reconnect("drop", ev);
   }
   async function reconnect(why, ev) {
@@ -1486,29 +1579,40 @@ Son bölüm (eskiden yeniye):`;
     else if (why !== "rollover") setState("live", "Yeniden bağlanıyor", isQuiz() ? "Birkaç saniye sürebilir." : "Anlatmaya devam edebilirsiniz; bu arada söyledikleriniz bekletiliyor.");
     session.contextLost = !session.handle;
     if (session.contextLost && !isQuiz()) session.resumed = true;   // yeni oturum öncesini hatırlamaz: talimata son bölüm eklenir
-    for (let i = 0; i < 6 && session.running; i++) {
+    // 10 deneme, aralar 0,5 · 1 · 2 · 4 · 8 · 8 · 8 · 8 · 8 sn: yaklaşık 48 sn (Google'ın hatası çoğu zaman bu sürede geçiyor)
+    let last = null;
+    for (let i = 0; i < 10 && session.running; i++) {
       if (i > 0) await new Promise(r => setTimeout(r, Math.min(8000, 500 * 2 ** (i - 1))));
       if (!session.running) return;
       try {
         const ws = await openSession();
         if (!session.running) { try { ws.close(1000); } catch {} return; }
         attach(ws);
+        const cause = session.fault ? "Google bağlantıyı kapattı (" + session.fault + "). " : "";
+        session.fault = "";
         if (isQuiz()) {
           // Yeni oturum soruları talimattan bilir; kaldığı sorudan başlaması için dürtmek yeter
           if (session.contextLost) { session.retryText = null; if (why !== "quizroll") qLog("sys", "Bağlantı yenilendi; kaldığınız sorudan devam ediliyor."); quizKick(); return; }
           if (why !== "rollover") qLog("sys", "Bağlantı yenilendi.");
           if (cut && quiz.cur >= 0 && !session.retryText && !quiz.ending) { session.retryText = "Bağlantı yenilendi. Kaldığın soruyu (Soru " + (quiz.cur + 1) + ") baştan oku."; session.retryLabel = "Sorunun yeniden okunması istendi."; }
         }
-        else if (session.contextLost) addLog("sys", "Bağlantı yenilendi. Dinleyici önceki anlattıklarınızı hatırlamayabilir.");
-        else if (why !== "rollover") addLog("sys", "Bağlantı yenilendi.");
+        else if (session.contextLost) addLog("sys", cause + "Bağlantı yenilendi. Dinleyici önceki anlattıklarınızı hatırlamayabilir.");
+        else if (why !== "rollover" || cause) addLog("sys", cause + "Bağlantı yenilendi.");
         if (session.retryText) { const t = session.retryText; session.retryText = null; sendText(t, session.retryLabel); }
         return;
       } catch (e) {
         if (e.kind === "stopped") return;
         if (e.kind !== "network" && e.kind !== "config") { fail(e.kind, e.reason); return; }
+        last = e;
+        // Eski oturum geri yüklenemedi ve Google bunu kendi hatasıyla bildirdi: o oturum bırakılır, sıradaki deneme yeni bir
+        // oturum açar. (İnternet kesildiyse yanıt gelmez; o zaman eski oturum bırakılmaz, bağlantı dönünce geri yüklenir.)
+        if (session.handle && serverFault(e)) {
+          session.handle = null; session.contextLost = true; if (!isQuiz()) session.resumed = true;
+          session.fault = session.fault || e.reason || "";
+        }
       }
     }
-    if (session.running) fail("network", ev && ev.reason);
+    if (session.running) fail("network", (last && last.reason) || (ev && ev.reason));
   }
   function fail(kind, reason) {
     showAlert(explain(kind, reason));
@@ -2182,8 +2286,18 @@ Kurallar:
     resetGate();
     setState("live", "Bağlanıyor", "Birkaç saniye sürebilir.");
     session.reconnecting = true; // bağlanırken söylenenler bekletilsin
+    session.fault = ""; session.faults = 0;
     try {
-      const ws = await openSession();
+      let ws = null;
+      for (let i = 0; !ws; i++) {
+        try { ws = await openSession(); }
+        catch (e) {
+          // Google kurulumu kendi hatasıyla kapattıysa geçicidir: 3 kez daha denenir (aralar 0,8 · 1,6 · 2,4 sn)
+          if (i >= 3 || !session.running || !serverFault(e)) throw e;
+          await new Promise(r => setTimeout(r, 800 * (i + 1)));
+          if (!session.running) throw { kind: "stopped" };
+        }
+      }
       if (!session.running) { try { ws.close(1000); } catch {} return; }
       attach(ws);
     } catch (e) {
