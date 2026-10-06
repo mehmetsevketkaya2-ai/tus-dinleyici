@@ -37,14 +37,15 @@ denemede bir kez kopyalar. Asıl sayfanın kayıtlarına hiçbir zaman yazmaz.
 ## Durum
 
 - 6 Ekim 2026: **1-notlar** (Notlar bölümünde yalnızca en son not, tek satır; "Tümünü göster" ile açılır)
-  deneme sayfasında denendi, kullanıcı "tamam" dedi ve `index.html` dosyasına geçti. `index.html` artık
-  4 Ekim sürümü + bu değişikliktir ("Sürüm: 6 Ekim 2026").
+  deneme sayfasında denendi, kullanıcı "tamam" dedi ve `index.html` dosyasına geçti ("Sürüm: 6 Ekim 2026",
+  `c1567ed`).
 - 6 Ekim 2026: **2-sesyolu** (yalnızca kayıt: "Ses yolu · …" satırları ve "Ses gelmiyor" düğmesi) deneme
   sayfasında kullanıldı ve işi bitti; `index.html` dosyasına geçmedi. Gerekirse `0833bcd` sürümündeki
   `deneme.html` dosyasından geri alınır.
-- 6 Ekim 2026: `deneme.html` üzerinde **4-toplu** deneniyor: kullanıcının isteğiyle dört değişiklik birlikte
-  (aşağıda). Kullanıcının "tamam" demesi bekleniyor; denince dördü birden `index.html` dosyasına geçer.
-  Biri sorun çıkarırsa yalnızca o çıkarılıp deneme sayfası yeniden kurulur.
+- 6 Ekim 2026: **4-toplu** (kullanıcının isteğiyle dört değişiklik birlikte; aşağıda) deneme sayfasında denendi,
+  kullanıcı "4 Deneme tamam yayına geçebilir" dedi ve dördü birden `index.html` dosyasına geçti. `index.html`
+  artık 4 Ekim sürümü + notlar + bu dört değişikliktir ("Sürüm: 6 Ekim 2026 (2)"). Geri dönmek gerekirse:
+  yalnız notları içeren önceki ana sayfa `c1567ed` sürümündeki `index.html` dosyasıdır.
 
 ## Çözülen sorun: ses kulaklıkta kesiliyordu (sayfadan değildi)
 
@@ -61,10 +62,12 @@ ve oturum sürerken ses düzeyine bakılır.
 Bu sorunda sayfa üç kez boşuna suçlandı ("Tamam" diyor; bekletme takılıyor; tabletin mikrofonuna geçiyor).
 Ders: ses duyulmuyorsa önce sayfanın sesi çıkarıp çıkarmadığı ölçülür, tahminle değişiklik yapılmaz.
 
-## Deneme sayfasındaki dört değişiklik (4-toplu)
+## Ana sayfadaki dört değişiklik (4-toplu, 6 Ekim)
 
 Kullanıcı yalnızca 0,5 sn bekleme kullanıyor; bütün mantık yalnızca 0,5 sn'ye göre tasarlanır.
-Dördü sırayla üst üste uygulanır; her biri ayrı bir adımdır ve tek başına çıkarılabilir.
+Dördü aşağıdaki sırayla üst üste uygulandı. Adımların ayrı hâlleri yalnızca git geçmişindeki deneme
+sayfalarında durur (`de58890` sürümündeki `deneme.html`: yalnız 1; `e85ef1f` sürümündeki: dördü). Biri
+çıkarılacaksa ilgili kod elle ayıklanır ve sonuç yine önce deneme sayfasına konur.
 
 1. **0,5 sn sabit**: bekleme süresi hep 0,5 sn, "Sustuğunuzda kaç saniye beklesin?" ayarı yok. Kayıtlı eski
    değer okunmaz.
@@ -79,6 +82,7 @@ Dördü sırayla üst üste uygulanır; her biri ayrı bir adımdır ve tek baş
    "Kaldığın yerden devam et" ile başlayan ya da bağlamı kaybolan oturuma dökümün son ~1400 karakteri verilir;
    "Yeni ders"te verilmez.
 
-Gerçek Google ile denenemeyen ve kullanıcının göreceği şeyler: dinleyici yeniden sorulana da "Tamam" diyebilir
-(5 Ekim'de bir kez oldu); yeniden sorma gereksiz yerde devreye girebilir (ders sırasında kendi kendine sorulan
-sorularda).
+Buradan gerçek Google ile denenemeyen, yalnızca kullanıcının görebileceği şeyler: dinleyici yeniden sorulana
+da "Tamam" diyebilir (5 Ekim'de bir kez oldu); yeniden sorma gereksiz yerde devreye girebilir (ders sırasında
+kendi kendine sorulan sorularda). Kullanıcı dördünü tablette deneyip onayladı; bunlarla ilgili bir şikâyet
+bildirmedi. Bildirirse önce dökümdeki "… soru yeniden soruldu" satırlarına bakılır.
