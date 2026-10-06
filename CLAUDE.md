@@ -9,7 +9,9 @@ tablette, Bluetooth kulaklıkla kullanır: https://mehmetsevketkaya2-ai.github.i
 
 1. Yeni bir özellik ya da düzeltme önce ayrı bir deneme sayfasına (`deneme.html`) konur.
    `index.html` olduğu gibi kalır.
-2. Her seferinde tek değişiklik konur.
+2. Her seferinde tek değişiklik konur. Kullanıcı kendisi isterse birkaç değişiklik birlikte konabilir
+   (6 Ekim: "Aynı anda hepsini yap, denemeye at; tek tek zaman alır denemesi"). Birlikte konanlar ayrı ayrı
+   çıkarılabilir yazılır.
 3. Kullanıcı deneme sayfasını tablette, kulaklıkla dener. Açıkça "tamam" demeden değişiklik
    `index.html` dosyasına geçmez.
 4. Kullanıcı istemeden hiçbir dosya değiştirilmez. Yalnızca soru sorduysa cevap verilir, işlem
@@ -40,8 +42,9 @@ denemede bir kez kopyalar. Asıl sayfanın kayıtlarına hiçbir zaman yazmaz.
 - 6 Ekim 2026: **2-sesyolu** (yalnızca kayıt: "Ses yolu · …" satırları ve "Ses gelmiyor" düğmesi) deneme
   sayfasında kullanıldı ve işi bitti; `index.html` dosyasına geçmedi. Gerekirse `0833bcd` sürümündeki
   `deneme.html` dosyasından geri alınır.
-- 6 Ekim 2026: `deneme.html` üzerinde **3-yarimsaniye** deneniyor: bekleme süresi 0,5 sn sabit,
-  "Sustuğunuzda kaç saniye beklesin?" ayarı kalktı. Kullanıcının "tamam" demesi bekleniyor.
+- 6 Ekim 2026: `deneme.html` üzerinde **4-toplu** deneniyor: kullanıcının isteğiyle dört değişiklik birlikte
+  (aşağıda). Kullanıcının "tamam" demesi bekleniyor; denince dördü birden `index.html` dosyasına geçer.
+  Biri sorun çıkarırsa yalnızca o çıkarılıp deneme sayfası yeniden kurulur.
 
 ## Çözülen sorun: ses kulaklıkta kesiliyordu (sayfadan değildi)
 
@@ -58,15 +61,24 @@ ve oturum sürerken ses düzeyine bakılır.
 Bu sorunda sayfa üç kez boşuna suçlandı ("Tamam" diyor; bekletme takılıyor; tabletin mikrofonuna geçiyor).
 Ders: ses duyulmuyorsa önce sayfanın sesi çıkarıp çıkarmadığı ölçülür, tahminle değişiklik yapılmaz.
 
-## Sırada (tek tek, her biri deneme sayfasında)
+## Deneme sayfasındaki dört değişiklik (4-toplu)
 
 Kullanıcı yalnızca 0,5 sn bekleme kullanıyor; bütün mantık yalnızca 0,5 sn'ye göre tasarlanır.
+Dördü sırayla üst üste uygulanır; her biri ayrı bir adımdır ve tek başına çıkarılabilir.
 
-1. **Her soruya cevap** (6 Ekim): dinleyici bir soruya "Tamam" deyip geçmesin, her soru duyulur bir cevap alsın.
-2. **Araya girme kuralları** (6 Ekim):
-   - Kısa söz (soru olsun olmasın): dinleyici cümlesini bitirir; sayfa sözü saklar, o bitince iletir. Soruysa
-     cevaplar, yorumsa tepki verir. Şu an kısa söz atılıyor.
-   - Uzun söz: kalan cevap bırakılır; o an söylenen değerlendirilir. Yanlışsa düzeltir, soruysa cevaplar,
-     doğru anlatımsa susar.
-3. **"Nerede kalmıştık?"** (6 Ekim): kalınan yeri tek cümleyle hatırlatsın ("Kaldığın yerden devam et" ile
-   sürdürüldüğünde de; "Yeni ders"te unutur).
+1. **0,5 sn sabit**: bekleme süresi hep 0,5 sn, "Sustuğunuzda kaç saniye beklesin?" ayarı yok. Kayıtlı eski
+   değer okunmaz.
+2. **Her soruya cevap**: talimata not eklenir (kısa sorular, "Şu peki?", "Doğru mu?" da sorudur; soruya
+   "Tamam" denmez). Sayfa da güvence sağlar: söz soruyla bittiyse ve dinleyici yalnızca dolgu söz söylediyse
+   ya da 4 sn hiç ses gelmediyse soru bir kez yazıyla yeniden sorulur; nedeni döküme yazılır
+   ("… soru yeniden soruldu"). Ders anlatırken yalnızca açık sorular (soru işareti ya da soru eki), dinleyici
+   az önce konuşmuşken soru sözcüğüyle ya da "… peki" ile biten sözler de sayılır.
+3. **Kısa araya girme**: dinleyici konuşurken söylenen 1,5 sn'den kısa söz atılmaz; dinleyici cümlesini
+   bitirir, söz o bitince iletilir (0,3 sn'den kısa sesler atılır). Uzun sözde eskisi gibi kalan cevap bırakılır.
+4. **"Nerede kalmıştık?"**: talimata not eklenir (kalınan yeri tek cümleyle hatırlat, konu dışı sözleri sayma).
+   "Kaldığın yerden devam et" ile başlayan ya da bağlamı kaybolan oturuma dökümün son ~1400 karakteri verilir;
+   "Yeni ders"te verilmez.
+
+Gerçek Google ile denenemeyen ve kullanıcının göreceği şeyler: dinleyici yeniden sorulana da "Tamam" diyebilir
+(5 Ekim'de bir kez oldu); yeniden sorma gereksiz yerde devreye girebilir (ders sırasında kendi kendine sorulan
+sorularda).
