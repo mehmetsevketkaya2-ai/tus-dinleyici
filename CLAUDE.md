@@ -46,11 +46,13 @@ denemede bir kez kopyalar. Asıl sayfanın kayıtlarına hiçbir zaman yazmaz.
   kullanıcı "4 Deneme tamam yayına geçebilir" dedi ve dördü birden `index.html` dosyasına geçti. `index.html`
   artık 4 Ekim sürümü + notlar + bu dört değişikliktir ("Sürüm: 6 Ekim 2026 (2)"). Geri dönmek gerekirse:
   yalnız notları içeren önceki ana sayfa `c1567ed` sürümündeki `index.html` dosyasıdır.
-- 6 Ekim 2026: `deneme.html` üzerinde **5-emir-uslup** deneniyor: iki değişiklik birlikte (aşağıda): emirler ve
-  sıcak üslup. Kullanıcının "tamam" demesi bekleniyor; denince ikisi birden `index.html` dosyasına geçer. Biri
-  sorun çıkarırsa yalnızca o çıkarılıp deneme sayfası yeniden kurulur (ikisi birbirinden bağımsız yazıldı).
-  Birlikte koymayı kullanıcı bu ikisi için ayrıca istemedi; "tek tek zaman alır denemesi" sözüne dayanılarak
-  konuldu ve kendisine bildirildi. Ayrı ister derse ayrılır.
+- 6 Ekim 2026: `deneme.html` üzerinde **5-emir-uslup** deneniyor: üç değişiklik birlikte (aşağıda): emirler,
+  sıcak üslup ve bağlantı. Kullanıcının "tamam" demesi bekleniyor; denince üçü birden `index.html` dosyasına
+  geçer. Biri sorun çıkarırsa yalnızca o çıkarılıp deneme sayfası yeniden kurulur (üçü birbirinden bağımsız
+  yazıldı). Emirlerle üslubu birlikte koymayı kullanıcı ayrıca istemedi; "tek tek zaman alır denemesi" sözüne
+  dayanılarak konuldu ve kendisine bildirildi. Bağlantı düzeltmesi sorulunca "Ekle" dedi. Üçüncü değişiklik
+  eklenirken deneme kimliği bilerek aynı bırakıldı: kimlik değişseydi deneme sayfasındaki notların yerine asıl
+  sayfanınkiler kopyalanırdı.
 
 ## Çözülen sorun: ses kulaklıkta kesiliyordu (sayfadan değildi)
 
@@ -92,9 +94,9 @@ da "Tamam" diyebilir (5 Ekim'de bir kez oldu); yeniden sorma gereksiz yerde devr
 kendi kendine sorulan sorularda). Kullanıcı dördünü tablette deneyip onayladı; bunlarla ilgili bir şikâyet
 bildirmedi. Bildirirse önce dökümdeki "… soru yeniden soruldu" satırlarına bakılır.
 
-## Deneme sayfasındaki iki değişiklik (5-emir-uslup)
+## Deneme sayfasındaki üç değişiklik (5-emir-uslup)
 
-İkisi birbirinden bağımsızdır; biri çıkarılırsa öbürü kalır.
+Üçü birbirinden bağımsızdır; biri çıkarılırsa öbürleri kalır.
 
 ### 1. Emirler
 
@@ -138,9 +140,39 @@ Kullanıcı (6 Ekim): dinleyici "daha samimi … ciddi ama … meslektaşmış g
   "doğru söylüyorsun" gibi onaylar (soruya cevapken çalınır).
 - Soru çöz bölümünün talimatı değişmedi (oradaki kalıp sözleri sayfa tanıyor).
 
+### 3. Bağlantı
+
+Kullanıcı 6 Ekim 16:58'de deneme sayfasından şu ekranı gönderdi: "Durdu · Google bağlantıyı kapattı · Google'ın
+yanıtı: Internal error encountered." Bu yanıtı Google'ın sunucusu verir. Canlı modellerde son haftalarda sık
+bildiriliyor; kullanıcının modeli için de var (gemini-3.8-live, 3 Ekim 2026:
+https://github.com/google-gemini/gemini-live-api-examples/issues/60). Bildirimlere göre bu hatadan sonra eski
+oturumun geri yüklenmesi reddedilebiliyor ya da geri yüklenen oturum yeniden kapanıyor; yeni oturum açılabiliyor.
+
+Bilinmeyenler: hata başlatırken mi çıktı, oturum sürerken mi (kullanıcı yazmadı); deneme sayfasının daha uzun
+talimatının payı var mı (bir bildirim uzun talimatta sıklaştığını söylüyor). Deneme sayfasında sık, ana sayfada hiç
+olmuyorsa pay var demektir; o zaman talimat kısaltılır.
+
+Sayfadaki eksik (4 Ekim sürümünde de vardı): oturum sürerken böyle kapanınca sayfa 16 sn içinde 6 kez, hep eski
+oturumu geri yükleyerek deniyor, olmazsa duruyordu; başlatırken hiç yeniden denemiyordu.
+
+Yapılan:
+- "Google'ın kendi hatası" yalnızca yanıt metninden tanınır ("internal error"). Kod yetmez: Google kota, anahtar ve
+  ayar hatalarını da 1011 ile bildirebiliyor; onlar eskisi gibi ele alınır.
+- Oturum sürerken: önce eski oturum geri yüklenmeye çalışılır (bağlam kaybolmasın). Google bunu da kendi hatasıyla
+  reddederse, ya da geri yüklenen oturum dinleyici tek bir cevabı bile bitiremeden yine aynı hatayla kapanırsa,
+  eski oturum bırakılır ve yeni oturum açılır; dinleyiciye dökümün son bölümü verilir. Durmadan önce 10 kez,
+  yaklaşık 48 sn denenir.
+- Başlatırken: Google kurulumu kendi hatasıyla kapatırsa 3 kez daha denenir.
+- İnternet kesintisinde (yanıt gelmez) eski oturum bırakılmaz; bağlantı dönünce geri yüklenir.
+- Dökümde neden yazılır: "Google bağlantıyı kapattı (Internal error encountered.). Bağlantı yenilendi."
+
 ### Buradan denenemeyen, yalnızca kullanıcının görebileceği şeyler
 
 Dinleyici emre gerçekten uyuyor mu; yazıyla iletilen isteğe de "Tamam" diyebilir (soruda 5 Ekim'de bir kez oldu);
 bir anlatım cümlesi emir sanılıp gereksiz yere istek iletilebilir; dinleyici "sen" diyor ve daha sıcak mı; daha çok
 konuşmaya başladı mı (ders sırasında gereksiz tepki, uzayan cevaplar). Şikâyet gelirse önce dökümdeki
 "… istek yeniden iletildi" satırlarına ve soluk ("susturuldu") satırlara bakılır.
+
+Bağlantı: Google gerçekten hata verdiğinde sayfa kendiliğinden toparlıyor mu. Toparladıysa dökümde "Google bağlantıyı
+kapattı (…). Bağlantı yenilendi." satırı olur; yine "Durdu" ekranı gelirse hata 48 sn'den uzun sürmüştür ya da
+neden başkadır, o ekranın ve dökümün son satırlarının görüntüsü istenir.

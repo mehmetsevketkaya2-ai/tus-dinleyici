@@ -178,7 +178,7 @@ a { color: var(--hema); }
 </head>
 <body>
 <div class="wrap">
-  <div id="trialBar" style="margin:0 0 14px;padding:10px 14px;border-radius:10px;background:#fde68a;color:#422006;font:600 14px/1.45 system-ui,sans-serif">Deneme sayfası · Denenen değişiklik: iki şey birlikte. 1) Emirler: “devam et”, “tekrar et”, “açıkla” gibi emirlerinizi yerine getirir. 2) Sıcak üslup: bir meslektaşınız gibi, “sen” diyerek, daha doğal konuşur. Anahtar ve ayarlar asıl sayfadan alınır. Notlar burada ayrı tutulur; asıl sayfadakilere dokunulmaz. <a href="https://mehmetsevketkaya2-ai.github.io/tus-dinleyici/" style="color:inherit">Asıl sayfaya dön</a></div>
+  <div id="trialBar" style="margin:0 0 14px;padding:10px 14px;border-radius:10px;background:#fde68a;color:#422006;font:600 14px/1.45 system-ui,sans-serif">Deneme sayfası · Denenen değişiklik: üç şey birlikte. 1) Emirler: “devam et”, “tekrar et”, “açıkla” gibi emirlerinizi yerine getirir. 2) Sıcak üslup: bir meslektaşınız gibi, “sen” diyerek, daha doğal konuşur. 3) Bağlantı: Google bağlantıyı kendi hatasıyla kapatırsa sayfa durmaz, kendiliğinden yeniden bağlanır. Anahtar ve ayarlar asıl sayfadan alınır. Notlar burada ayrı tutulur; asıl sayfadakilere dokunulmaz. <a href="https://mehmetsevketkaya2-ai.github.io/tus-dinleyici/" style="color:inherit">Asıl sayfaya dön</a></div>
   <header>
     <h1>TUS Dinleyici <small id="tagline">Siz anlatın, o dinlesin. Yalnızca önemli bir eksik ya da yanlış olduğunda konuşur.</small></h1>
     <div class="clock" id="clock" aria-label="Süre">00:00</div>
@@ -1226,6 +1226,11 @@ Son bölüm (eskiden yeniye):`;
     if (code === 1007 || code === 1008) return "config"; // geçersiz alan ya da değer
     return "network"; // 1006, 1011 ve diğerleri: geçici sorun
   }
+  // Google bağlantıyı kendi tarafındaki bir hatayla mı kapattı? ("Internal error encountered.") Kod tek başına yetmez: Google
+  // anahtar, kota ve ayar hatalarını da 1011 ile bildirebiliyor; onları classify ayırır, burada yalnızca yanıt metnine bakılır.
+  // Bu hata canlı modellerde ara ara oluyor; ardından eski oturumun geri yüklenmesi çoğu zaman reddediliyor ya da geri yüklenen
+  // oturum yeniden kapanıyor, yeni oturum ise açılabiliyor.
+  function serverFault(e) { return !!e && classify(e.code, e.reason) === "network" && /internal (server )?error/i.test(e.reason || ""); }
   function explain(kind, reason) {
     const raw = reason ? "<br><span class=\"hint\">Google'ın yanıtı: " + escapeHtml(reason) + "</span>" : "";
     switch (kind) {
@@ -1356,6 +1361,7 @@ Son bölüm (eskiden yeniye):`;
     if (sc.outputTranscription && sc.outputTranscription.text) palText(sc.outputTranscription.text);
     if (sc.turnComplete) {
       session.serverTurnOpen = false;
+      session.faults = 0;   // dinleyici bir cevabı bitirdi: oturum sağlıklı (bkz. onClose)
       // Söze girmiştiniz, dinleyici duraklamış Google'ın kararını bekliyordu; Google sözünü bitirdi, artık "kesildi" demez
       if (barge.wait && audio.paused) abortTurn(true);
       turnDone();
@@ -1568,6 +1574,13 @@ Son bölüm (eskiden yeniye):`;
       session.textVia = session.textVia === "realtime" ? "client" : "realtime";
       session.retryText = session.lastTextSent.text; session.retryLabel = session.lastTextSent.label;
     }
+    // Google oturumu kendi hatasıyla kapattı: önce eski oturum geri yüklenmeye çalışılır. Ama arada dinleyici tek bir cevabı
+    // bile bitiremeden hata yinelendiyse (geri yüklenen oturum da kapandı) o oturum bozulmuştur: bırakılır, yeni oturum açılır.
+    if (serverFault(ev)) {
+      session.fault = ev.reason || "";
+      session.faults = (session.faults || 0) + 1;
+      if (session.faults >= 2) session.handle = null;
+    }
     reconnect("drop", ev);
   }
   async function reconnect(why, ev) {
@@ -1581,29 +1594,40 @@ Son bölüm (eskiden yeniye):`;
     else if (why !== "rollover") setState("live", "Yeniden bağlanıyor", isQuiz() ? "Birkaç saniye sürebilir." : "Anlatmaya devam edebilirsiniz; bu arada söyledikleriniz bekletiliyor.");
     session.contextLost = !session.handle;
     if (session.contextLost && !isQuiz()) session.resumed = true;   // yeni oturum öncesini hatırlamaz: talimata son bölüm eklenir
-    for (let i = 0; i < 6 && session.running; i++) {
+    // 10 deneme, aralar 0,5 · 1 · 2 · 4 · 8 · 8 · 8 · 8 · 8 sn: yaklaşık 48 sn (Google'ın hatası çoğu zaman bu sürede geçiyor)
+    let last = null;
+    for (let i = 0; i < 10 && session.running; i++) {
       if (i > 0) await new Promise(r => setTimeout(r, Math.min(8000, 500 * 2 ** (i - 1))));
       if (!session.running) return;
       try {
         const ws = await openSession();
         if (!session.running) { try { ws.close(1000); } catch {} return; }
         attach(ws);
+        const cause = session.fault ? "Google bağlantıyı kapattı (" + session.fault + "). " : "";
+        session.fault = "";
         if (isQuiz()) {
           // Yeni oturum soruları talimattan bilir; kaldığı sorudan başlaması için dürtmek yeter
           if (session.contextLost) { session.retryText = null; if (why !== "quizroll") qLog("sys", "Bağlantı yenilendi; kaldığınız sorudan devam ediliyor."); quizKick(); return; }
           if (why !== "rollover") qLog("sys", "Bağlantı yenilendi.");
           if (cut && quiz.cur >= 0 && !session.retryText && !quiz.ending) { session.retryText = "Bağlantı yenilendi. Kaldığın soruyu (Soru " + (quiz.cur + 1) + ") baştan oku."; session.retryLabel = "Sorunun yeniden okunması istendi."; }
         }
-        else if (session.contextLost) addLog("sys", "Bağlantı yenilendi. Dinleyici önceki anlattıklarınızı hatırlamayabilir.");
-        else if (why !== "rollover") addLog("sys", "Bağlantı yenilendi.");
+        else if (session.contextLost) addLog("sys", cause + "Bağlantı yenilendi. Dinleyici önceki anlattıklarınızı hatırlamayabilir.");
+        else if (why !== "rollover" || cause) addLog("sys", cause + "Bağlantı yenilendi.");
         if (session.retryText) { const t = session.retryText; session.retryText = null; sendText(t, session.retryLabel); }
         return;
       } catch (e) {
         if (e.kind === "stopped") return;
         if (e.kind !== "network" && e.kind !== "config") { fail(e.kind, e.reason); return; }
+        last = e;
+        // Eski oturum geri yüklenemedi ve Google bunu kendi hatasıyla bildirdi: o oturum bırakılır, sıradaki deneme yeni bir
+        // oturum açar. (İnternet kesildiyse yanıt gelmez; o zaman eski oturum bırakılmaz, bağlantı dönünce geri yüklenir.)
+        if (session.handle && serverFault(e)) {
+          session.handle = null; session.contextLost = true; if (!isQuiz()) session.resumed = true;
+          session.fault = session.fault || e.reason || "";
+        }
       }
     }
-    if (session.running) fail("network", ev && ev.reason);
+    if (session.running) fail("network", (last && last.reason) || (ev && ev.reason));
   }
   function fail(kind, reason) {
     showAlert(explain(kind, reason));
@@ -2277,8 +2301,18 @@ Kurallar:
     resetGate();
     setState("live", "Bağlanıyor", "Birkaç saniye sürebilir.");
     session.reconnecting = true; // bağlanırken söylenenler bekletilsin
+    session.fault = ""; session.faults = 0;
     try {
-      const ws = await openSession();
+      let ws = null;
+      for (let i = 0; !ws; i++) {
+        try { ws = await openSession(); }
+        catch (e) {
+          // Google kurulumu kendi hatasıyla kapattıysa geçicidir: 3 kez daha denenir (aralar 0,8 · 1,6 · 2,4 sn)
+          if (i >= 3 || !session.running || !serverFault(e)) throw e;
+          await new Promise(r => setTimeout(r, 800 * (i + 1)));
+          if (!session.running) throw { kind: "stopped" };
+        }
+      }
       if (!session.running) { try { ws.close(1000); } catch {} return; }
       attach(ws);
     } catch (e) {
