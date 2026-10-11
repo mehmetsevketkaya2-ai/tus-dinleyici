@@ -124,7 +124,7 @@ textarea { font-size: 0.88rem; line-height: 1.5; min-height: 220px; resize: vert
 .notes li p { margin: 0; font: 400 1rem/1.5 var(--display); }
 /* Notlar kapalıyken yalnızca en son not, tek satır olarak görünür (sayfa uzamasın, Ayarlar'a inmek kolay olsun) */
 .notes ol.one li { display: none; }
-.notes ol.one li:last-child { display: grid; cursor: pointer; }
+.notes ol.one li:first-child { display: grid; cursor: pointer; }
 .notes ol.one li p { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .empty { color: var(--muted); font-size: 0.93rem; padding: 6px 0; }
 details.log summary { cursor: pointer; font-weight: 600; font-size: 0.92rem; }
@@ -178,7 +178,7 @@ a { color: var(--hema); }
 </head>
 <body>
 <div class="wrap">
-  <div id="trialBar" style="margin:0 0 14px;padding:10px 14px;border-radius:10px;background:#fde68a;color:#422006;font:600 14px/1.45 system-ui,sans-serif">Deneme sayfası · Denenen değişiklik: üç şey birlikte. 1) Emirler: “devam et”, “tekrar et”, “açıkla” gibi emirlerinizi yerine getirir. 2) Sıcak üslup: bir meslektaşınız gibi, “sen” diyerek, daha doğal konuşur. 3) Bağlantı: Google bağlantıyı kendi hatasıyla kapatırsa sayfa durmaz, kendiliğinden yeniden bağlanır. Anahtar ve ayarlar asıl sayfadan alınır. Notlar burada ayrı tutulur; asıl sayfadakilere dokunulmaz. <a href="https://mehmetsevketkaya2-ai.github.io/tus-dinleyici/" style="color:inherit">Asıl sayfaya dön</a></div>
+  <div id="trialBar" style="margin:0 0 14px;padding:10px 14px;border-radius:10px;background:#fde68a;color:#422006;font:600 14px/1.45 system-ui,sans-serif">Deneme sayfası · Denenen değişiklik: notlar yeniden eskiye. “Tümünü göster”e basınca en yeni not en üstte olur; “Notları kopyala” ders sırasında (eskiden yeniye) kalır. Anahtar ve ayarlar asıl sayfadan alınır. Notlar burada ayrı tutulur; asıl sayfadakilere dokunulmaz. <a href="https://mehmetsevketkaya2-ai.github.io/tus-dinleyici/" style="color:inherit">Asıl sayfaya dön</a></div>
   <header>
     <h1>TUS Dinleyici <small id="tagline">Siz anlatın, o dinlesin. Yalnızca önemli bir eksik ya da yanlış olduğunda konuşur.</small></h1>
     <div class="clock" id="clock" aria-label="Süre">00:00</div>
@@ -342,7 +342,7 @@ a { color: var(--hema); }
         <span><b>Kulaklık kullanın.</b> Hoparlörden çıkan ses mikrofona geri dönerse dinleyici kendi sesini sizin sözünüz sanabilir.</span>
         <span>Mikrofon izni sorulursa <b>İzin ver</b>'e basın. Sayfayı Chrome ya da Edge ile açın.</span>
       </div>
-      <div class="hint" style="margin-top:14px">Deneme sayfası (5-emir-uslup): asıl sayfa “6 Ekim 2026 (2)” + denenen değişiklik. <a href="https://mehmetsevketkaya2-ai.github.io/tus-dinleyici/">Asıl sayfaya dön</a></div>
+      <div class="hint" style="margin-top:14px">Deneme sayfası (6-notlar-ters): asıl sayfa “6 Ekim 2026 (3)” + denenen değişiklik. <a href="https://mehmetsevketkaya2-ai.github.io/tus-dinleyici/">Asıl sayfaya dön</a></div>
       <div class="hint" id="diag"></div>
     </details>
   </section>
@@ -493,7 +493,7 @@ Son bölüm (eskiden yeniye):`;
   // Deneme sayfası: kayıtlar ayrı tutulur ("tusddeneme."); asıl sayfanın kayıtları yalnızca okunur, onlara yazılmaz.
   // Anahtar ve ayarlar her açılışta asıl sayfadan alınır. Notlar ve döküm, her yeni denemede bir kez asıl sayfadan
   // kopyalanır (değişiklik hemen görülebilsin diye); sonrası ayrıdır.
-  const TRIAL_ID = "5-emir-uslup";
+  const TRIAL_ID = "6-notlar-ters";
   try {
     ["key", "silence", "voice", "model", "topic", "prompt6", "levels", "qkey", "exmodel", "lockrun"].forEach(k => { const v = localStorage.getItem("tusd." + k); if (v !== null) localStorage.setItem("tusddeneme." + k, v); else localStorage.removeItem("tusddeneme." + k); });
     if (localStorage.getItem("tusddeneme.trial") !== TRIAL_ID) {
@@ -644,10 +644,11 @@ Son bölüm (eskiden yeniye):`;
   function elapsed() { return fmtClock(isQuiz() ? (session.startedAt ? Date.now() - session.startedAt : 0) : lectureMs()); }
   // Notlar çoğaldıkça sayfa uzuyor, Ayarlar'a inmek zorlaşıyordu: liste kapalı durur ve yalnızca en son notu
   // tek satır olarak gösterir; düğmeye ya da satıra dokununca tamamı açılır. Seçim hatırlanır.
+  // Açıkken en yeni not en üsttedir (yeniden eskiye); kayıtlı sıra ve "Notları kopyala" ders sırasında kalır.
   let notesOpen = store.get("notesopen", "0") === "1";
   function renderNotes() {
     els.notes.innerHTML = "";
-    notes.forEach(n => {
+    notes.slice().reverse().forEach(n => {
       const li = document.createElement("li");
       const t = document.createElement("time"); t.textContent = n.at;
       const p = document.createElement("p"); p.textContent = n.text;

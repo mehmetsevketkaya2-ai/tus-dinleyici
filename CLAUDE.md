@@ -51,9 +51,13 @@ denemede bir kez kopyalar. Asıl sayfanın kayıtlarına hiçbir zaman yazmaz.
   2026 (3)"). Geri dönmek gerekirse önceki ana sayfalar: `9537ed8` (4-toplu), `c1567ed` (yalnız notlar).
   Emirlerle üslubu birlikte koymayı kullanıcı ayrıca istememişti; "tek tek zaman alır denemesi" sözüne
   dayanılarak konuldu ve kendisine bildirildi. Bağlantı düzeltmesi sorulunca "Ekle" dedi.
-- `deneme.html` şu an bu son denemeyi gösteriyor (5-emir-uslup, "6 Ekim 2026 (2)" üstüne kurulu); ana sayfayla
-  aynı işi yapar. Yeni bir deneme konunca değişir. Aynı denemeye bir değişiklik eklenirken deneme kimliği aynı
-  bırakılır: kimlik değişirse deneme sayfasındaki notların yerine asıl sayfanınkiler kopyalanır.
+- 11 Ekim 2026: `deneme.html` üzerinde **6-notlar-ters** deneniyor: "Tümünü göster"e basınca notlar yeniden
+  eskiye sıralanır (en yeni not en üstte). Liste kapalıyken yine yalnızca en yeni not tek satır görünür; kayıtlı
+  sıra ve "Notları kopyala" ders sırasında (eskiden yeniye) kalır. Kullanıcı önerdi ("sondan başa doğru sıralansa
+  daha iyi olmaz mı"); kopyalamanın ders sırasında kalması önerimdi, "Ok" dedi. Kullanıcının "tamam" demesi
+  bekleniyor. Denemeler: notes_test ve deneme_test `TUS_NEWEST_FIRST=1` ile yeni sırayı, onsuz eski sırayı dener.
+- Aynı denemeye bir değişiklik eklenirken deneme kimliği aynı bırakılır: kimlik değişirse deneme sayfasındaki
+  notların yerine asıl sayfanınkiler kopyalanır.
 
 ## Sırada bekleyen, kullanıcının istemediği öneriler
 
@@ -62,6 +66,14 @@ denemede bir kez kopyalar. Asıl sayfanın kayıtlarına hiçbir zaman yazmaz.
 - Kullanıcı başka bir API sordu (6 Ekim; NVIDIA, "başka ücretsiz API"). Verilen cevap: canlı sesli konuşma +
   Türkçe + tarayıcıdan doğrudan bağlantı + sürekli ücretsiz kullanım bir arada yalnızca Google'da bulundu.
   NVIDIA'nın canlı ses modelinde (Nemotron VoiceChat) Türkçe görünmüyor; OpenAI Realtime ücretli. Bir şey yapılmadı.
+- 8 Ekim: dinleyici sorulara 4 sn içinde cevap vermiyor, sayfa soruyu yazıyla yeniden soruyordu ("Duyulur bir cevap
+  gelmedi"); uzun anlatım tek "Siz:" satırında kalıyordu, yani Google aralarda hiç sıra almıyordu. Arkada müzik
+  yoktu (kullanıcı). Olası nedenler: Google'ın ücretsiz katmanındaki gecikmeler; model seçimi (3.1 Flash Live'a geçmiş
+  olabilir; sorulan soruya cevap gelmedi). Önerilen önlem (cevapsızlık sürerse sayfa yeni oturum açsın) istenmedi.
+- 11 Ekim: model cevabın sonuna tıbbi uyarı ekliyor ("tıbbi tavsiye ya da tanı yerine geçmez…"). Sayfa uyarıyı tek
+  başına gelirse çalmıyor ve notlardan ayıklıyor; cevaba eklenince sesten ayıklayamıyor. Önerilen iki önlem (kuralı
+  her talimata eklenen notlara da koymak; uyarı başlayınca sesi kesmek) için kullanıcı "boşver" dedi; yapılmadı.
+  Hazır talimatta bu kural var, eklenen notlarda yok: düzenlenmiş talimat kullanılıyorsa hiç olmayabilir.
 
 ## Çözülen sorun: ses kulaklıkta kesiliyordu (sayfadan değildi)
 
