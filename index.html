@@ -123,7 +123,7 @@ textarea { font-size: 0.88rem; line-height: 1.5; min-height: 220px; resize: vert
 .notes li p { margin: 0; font: 400 1rem/1.5 var(--display); }
 /* Notlar kapalıyken yalnızca en son not, tek satır olarak görünür (sayfa uzamasın, Ayarlar'a inmek kolay olsun) */
 .notes ol.one li { display: none; }
-.notes ol.one li:last-child { display: grid; cursor: pointer; }
+.notes ol.one li:first-child { display: grid; cursor: pointer; }
 .notes ol.one li p { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .empty { color: var(--muted); font-size: 0.93rem; padding: 6px 0; }
 details.log summary { cursor: pointer; font-weight: 600; font-size: 0.92rem; }
@@ -340,7 +340,7 @@ a { color: var(--hema); }
         <span><b>Kulaklık kullanın.</b> Hoparlörden çıkan ses mikrofona geri dönerse dinleyici kendi sesini sizin sözünüz sanabilir.</span>
         <span>Mikrofon izni sorulursa <b>İzin ver</b>'e basın. Sayfayı Chrome ya da Edge ile açın.</span>
       </div>
-      <div class="hint" style="margin-top:14px">Sürüm: 6 Ekim 2026 (3). Karşılaştırmak için eski sürümler: <a href="https://mehmetsevketkaya2-ai.github.io/tus-dinleyici/2ekim.html">2 Ekim</a> · <a href="https://mehmetsevketkaya2-ai.github.io/tus-dinleyici/1ekim.html">1 Ekim</a></div>
+      <div class="hint" style="margin-top:14px">Sürüm: 11 Ekim 2026. Karşılaştırmak için eski sürümler: <a href="https://mehmetsevketkaya2-ai.github.io/tus-dinleyici/2ekim.html">2 Ekim</a> · <a href="https://mehmetsevketkaya2-ai.github.io/tus-dinleyici/1ekim.html">1 Ekim</a></div>
       <div class="hint" id="diag"></div>
     </details>
   </section>
@@ -629,10 +629,11 @@ Son bölüm (eskiden yeniye):`;
   function elapsed() { return fmtClock(isQuiz() ? (session.startedAt ? Date.now() - session.startedAt : 0) : lectureMs()); }
   // Notlar çoğaldıkça sayfa uzuyor, Ayarlar'a inmek zorlaşıyordu: liste kapalı durur ve yalnızca en son notu
   // tek satır olarak gösterir; düğmeye ya da satıra dokununca tamamı açılır. Seçim hatırlanır.
+  // Açıkken en yeni not en üsttedir (yeniden eskiye); kayıtlı sıra ve "Notları kopyala" ders sırasında kalır.
   let notesOpen = store.get("notesopen", "0") === "1";
   function renderNotes() {
     els.notes.innerHTML = "";
-    notes.forEach(n => {
+    notes.slice().reverse().forEach(n => {
       const li = document.createElement("li");
       const t = document.createElement("time"); t.textContent = n.at;
       const p = document.createElement("p"); p.textContent = n.text;

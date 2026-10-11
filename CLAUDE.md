@@ -51,11 +51,12 @@ denemede bir kez kopyalar. Asıl sayfanın kayıtlarına hiçbir zaman yazmaz.
   2026 (3)"). Geri dönmek gerekirse önceki ana sayfalar: `9537ed8` (4-toplu), `c1567ed` (yalnız notlar).
   Emirlerle üslubu birlikte koymayı kullanıcı ayrıca istememişti; "tek tek zaman alır denemesi" sözüne
   dayanılarak konuldu ve kendisine bildirildi. Bağlantı düzeltmesi sorulunca "Ekle" dedi.
-- 11 Ekim 2026: `deneme.html` üzerinde **6-notlar-ters** deneniyor: "Tümünü göster"e basınca notlar yeniden
-  eskiye sıralanır (en yeni not en üstte). Liste kapalıyken yine yalnızca en yeni not tek satır görünür; kayıtlı
-  sıra ve "Notları kopyala" ders sırasında (eskiden yeniye) kalır. Kullanıcı önerdi ("sondan başa doğru sıralansa
-  daha iyi olmaz mı"); kopyalamanın ders sırasında kalması önerimdi, "Ok" dedi. Kullanıcının "tamam" demesi
-  bekleniyor. Denemeler: notes_test ve deneme_test `TUS_NEWEST_FIRST=1` ile yeni sırayı, onsuz eski sırayı dener.
+- 11 Ekim 2026: **6-notlar-ters** ("Tümünü göster"e basınca notlar yeniden eskiye, en yeni not en üstte; liste
+  kapalıyken yine yalnızca en yeni not tek satır; kayıtlı sıra ve "Notları kopyala" ders sırasında, eskiden yeniye)
+  deneme sayfasında denendi, kullanıcı "Tamam" dedi ve `index.html` dosyasına geçti ("Sürüm: 11 Ekim 2026").
+  Öneri kullanıcının ("sondan başa doğru sıralansa daha iyi olmaz mı"); kopyalamanın ders sırasında kalması benim
+  önerimdi, "Ok" dedi. Önceki ana sayfa `24736d3`. Denemeler: notes_test ve deneme_test varsayılan olarak yeni sırayı,
+  `TUS_NEWEST_FIRST=0` ile eski sırayı dener. `deneme.html` şu an bu denemeyi gösteriyor; ana sayfayla aynı işi yapar.
 - Aynı denemeye bir değişiklik eklenirken deneme kimliği aynı bırakılır: kimlik değişirse deneme sayfasındaki
   notların yerine asıl sayfanınkiler kopyalanır.
 
